@@ -1,0 +1,92 @@
+name: CD — Publish chart and propose staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "chart/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  chart:
+    name: CD — Publish OCI chart
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.2.3
+      - name: Require a chart-version bump
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BEFORE" ]; then
+            BEFORE="$(git rev-parse HEAD^)"
+          fi
+          previous_version="$(git show "$BEFORE:chart/Chart.yaml" | awk '$1 == "version:" { print $2 }')"
+          current_version="$(awk '$1 == "version:" { print $2 }' chart/Chart.yaml)"
+          test "$current_version" != "$previous_version" || {
+            echo "chart/ changed without a Chart.yaml version bump ($current_version)." >&2
+            exit 1
+          }
+      - run: helm lint chart
+      - run: helm template hello-api chart > /tmp/hello-api.yaml
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+      - id: push
+        name: Package and publish
+        env:
+          CHART_OUTPUT_DIR: ${{ runner.temp }}/charts
+          CHART_REGISTRY: oci://ghcr.io/${{ github.repository }}/charts
+        run: |
+          set -euo pipefail
+          mkdir -p "$CHART_OUTPUT_DIR"
+          helm package chart --destination "$CHART_OUTPUT_DIR"
+          chart_package="$(find "$CHART_OUTPUT_DIR" -maxdepth 1 -name '*.tgz' -print -quit)"
+          test -n "$chart_package"
+          push_output="$(helm push "$chart_package" "$CHART_REGISTRY")"
+          printf '%s\n' "$push_output"
+          digest="$(printf '%s\n' "$push_output" | awk '/^Digest:/ { print $2 }')"
+          test -n "$digest"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+  propose-staging:
+    name: CD — Propose staging chart
+    needs: chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: genokan/practice-lab
+          token: ${{ secrets.MANIFESTS_TOKEN }}
+          path: manifests
+          persist-credentials: false
+      - name: Select the immutable staging chart
+        uses: mikefarah/yq@v4.47.2
+        with:
+          cmd: >-
+            yq -i '(.spec.generators[] | select(has("list")) | .list.elements[] |
+            select(.application == "hello-api-staging") | .chartRevision) =
+            "${{ needs.chart.outputs.digest }}"' manifests/k8s/apps/hello-api/appset.yaml
+      - name: Open staging chart PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.MANIFESTS_TOKEN }}
+          path: manifests
+          branch: automation/hello-api-staging-chart
+          delete-branch: true
+          commit-message: "cd: stage hello-api chart ${{ needs.chart.outputs.digest }}"
+          title: "cd: stage hello-api chart"
+          body: |
+            Selects the immutable OCI chart built from ${{ github.sha }} for staging.
+
+            This changes only the staging chart digest; image selection is independent.
