@@ -1,16 +1,34 @@
-name: Validate hello-api
+name: CI — Validate application
 
 on:
   pull_request:
+    paths:
+      - ".github/workflows/ci-application.yaml"
+      - ".dockerignore"
+      - "Dockerfile"
+      - "config/**"
+      - "lib/**"
+      - "mix.exs"
+      - "mix.lock"
+      - "test/**"
   push:
     branches: [main]
+    paths:
+      - ".dockerignore"
+      - "Dockerfile"
+      - "config/**"
+      - "lib/**"
+      - "mix.exs"
+      - "mix.lock"
+      - "test/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   application:
-    name: Phoenix
+    name: CI — Phoenix
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -28,19 +46,3 @@ jobs:
       - run: mix deps.get
       - run: mix format --check-formatted
       - run: mix test
-
-  chart:
-    name: Helm chart and generated docs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: azure/setup-helm@v5
-        with:
-          version: v4.2.3
-      - uses: actions/setup-go@v6
-        with:
-          go-version: "1.26.5"
-      - run: helm lint chart
-      - run: helm template hello-api chart > /tmp/hello-api.yaml
-      - run: go run github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2 --chart-search-root=chart
-      - run: git diff --exit-code -- chart/README.md

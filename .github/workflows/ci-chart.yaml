@@ -1,0 +1,50 @@
+name: CI — Validate Helm chart
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/ci-chart.yaml"
+      - "chart/**"
+  push:
+    branches: [main]
+    paths:
+      - "chart/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chart:
+    name: CI — Helm chart and generated docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.2.3
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.5"
+      - name: CI — Require a chart-version bump
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          comparison_ref="${BASE:-$BEFORE}"
+          if [ -z "$comparison_ref" ]; then
+            comparison_ref="$(git rev-parse HEAD^)"
+          fi
+          previous_version="$(git show "$comparison_ref:chart/Chart.yaml" | awk '$1 == "version:" { print $2 }')"
+          current_version="$(awk '$1 == "version:" { print $2 }' chart/Chart.yaml)"
+          test "$current_version" != "$previous_version" || {
+            echo "chart/ changed without a Chart.yaml version bump ($current_version)." >&2
+            exit 1
+          }
+      - run: helm lint chart
+      - run: helm template hello-api chart > /tmp/hello-api.yaml
+      - run: go run github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2 --chart-search-root=chart
+      - run: git diff --exit-code -- chart/README.md
