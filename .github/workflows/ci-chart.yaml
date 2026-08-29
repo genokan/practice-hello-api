@@ -3,7 +3,6 @@ name: CI — Validate Helm chart
 on:
   pull_request:
     paths:
-      - ".github/workflows/ci-chart.yaml"
       - "chart/**"
   push:
     branches: [main]
