@@ -1,0 +1,46 @@
+name: Validate hello-api
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  application:
+    name: Phoenix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.2.4"
+          elixir-version: "1.18.4"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: mix-${{ runner.os }}-otp-27.2.4-elixir-1.18.4-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-${{ runner.os }}-otp-27.2.4-elixir-1.18.4-
+      - run: mix deps.get
+      - run: mix format --check-formatted
+      - run: mix test
+
+  chart:
+    name: Helm chart and generated docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.2.3
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.5"
+      - run: helm lint chart
+      - run: helm template hello-api chart > /tmp/hello-api.yaml
+      - run: go run github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2 --chart-search-root=chart
+      - run: git diff --exit-code -- chart/README.md
