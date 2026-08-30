@@ -25,92 +25,15 @@ permissions:
   contents: read
 
 jobs:
-  selections:
-    name: Resolve deployment digests
-    runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.resolve.outputs.environment }}
-      image_digest: ${{ steps.resolve.outputs.image_digest }}
-      chart_digest: ${{ steps.resolve.outputs.chart_digest }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          repository: genokan/practice-lab
-          token: ${{ secrets.MANIFESTS_TOKEN }}
-          path: manifests
-          persist-credentials: false
-      - id: resolve
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          INPUT_ENVIRONMENT: ${{ inputs.environment }}
-          INPUT_IMAGE_DIGEST: ${{ inputs.image_digest }}
-          INPUT_CHART_DIGEST: ${{ inputs.chart_digest }}
-        run: |
-          set -euo pipefail
-          if [ "$EVENT_NAME" = release ]; then
-            environment=prod
-            source_environment=staging
-          else
-            environment="$INPUT_ENVIRONMENT"
-            source_environment="$environment"
-          fi
-          selected_image="$(awk '/^  digest:/ { print $2 }' "manifests/k8s/apps/hello-api/values/$source_environment.yaml")"
-          selected_chart="$(awk "/application: hello-api-$source_environment/{seen=1} seen && /chartRevision:/{print \$2; exit}" manifests/k8s/apps/hello-api/appset.yaml)"
-          image_digest="${INPUT_IMAGE_DIGEST:-$selected_image}"
-          chart_digest="${INPUT_CHART_DIGEST:-$selected_chart}"
-          case "$environment" in staging|prod) ;; *) echo "Invalid environment: $environment" >&2; exit 1;; esac
-          case "$image_digest" in sha256:*) ;; *) echo "Image selection is not a digest" >&2; exit 1;; esac
-          case "$chart_digest" in sha256:*) ;; *) echo "Chart selection is not a digest" >&2; exit 1;; esac
-          echo "environment=$environment" >> "$GITHUB_OUTPUT"
-          echo "image_digest=$image_digest" >> "$GITHUB_OUTPUT"
-          echo "chart_digest=$chart_digest" >> "$GITHUB_OUTPUT"
-
   deploy:
-    name: "Deploy ${{ needs.selections.outputs.environment }}: image ${{ needs.selections.outputs.image_digest }}, chart ${{ needs.selections.outputs.chart_digest }}"
-    needs: selections
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          repository: genokan/practice-lab
-          token: ${{ secrets.MANIFESTS_TOKEN }}
-          path: manifests
-          persist-credentials: false
-      - name: Select image
-        uses: mikefarah/yq@v4.47.2
-        with:
-          cmd: >-
-            yq -i '.image.digest = "${{ needs.selections.outputs.image_digest }}"'
-            manifests/k8s/apps/hello-api/values/${{ needs.selections.outputs.environment }}.yaml
-      - name: Select chart
-        uses: mikefarah/yq@v4.47.2
-        with:
-          cmd: >-
-            yq -i '(.spec.generators[] | select(has("list")) | .list.elements[] |
-            select(.application == "hello-api-${{ needs.selections.outputs.environment }}") |
-            .chartRevision) = "${{ needs.selections.outputs.chart_digest }}"'
-            manifests/k8s/apps/hello-api/appset.yaml
-      - id: pull-request
-        name: Create deployment PR
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.MANIFESTS_TOKEN }}
-          path: manifests
-          branch: automation/hello-api-${{ needs.selections.outputs.environment }}
-          delete-branch: true
-          draft: ${{ needs.selections.outputs.environment == 'prod' }}
-          commit-message: "deploy: hello-api ${{ needs.selections.outputs.environment }}"
-          title: "deploy: hello-api ${{ needs.selections.outputs.environment }}"
-          body: |
-            Deploys immutable artifacts to `${{ needs.selections.outputs.environment }}`.
-
-            **Image digest:** `${{ needs.selections.outputs.image_digest }}`
-
-            **Chart digest:** `${{ needs.selections.outputs.chart_digest }}`
-      - if: needs.selections.outputs.environment == 'staging' && steps.pull-request.outputs.pull-request-number
-        name: Merge staging deployment PR
-        env:
-          GH_TOKEN: ${{ secrets.MANIFESTS_TOKEN }}
-        run: >-
-          gh pr merge "${{ steps.pull-request.outputs.pull-request-number }}"
-          --repo genokan/practice-lab --squash --delete-branch
+    name: Deploy hello-api
+    uses: genokan/practice-lab/.github/workflows/deploy.yaml@main
+    with:
+      application: hello-api
+      environment: ${{ github.event_name == 'release' && 'prod' || inputs.environment }}
+      source_environment: ${{ github.event_name == 'release' && 'staging' || inputs.environment }}
+      image_digest: ${{ inputs.image_digest }}
+      chart_digest: ${{ inputs.chart_digest }}
+      source_sha: ${{ github.sha }}
+    secrets:
+      manifests_token: ${{ secrets.MANIFESTS_TOKEN }}

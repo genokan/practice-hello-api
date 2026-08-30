@@ -167,52 +167,16 @@ jobs:
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
   staging:
-    name: "Deploy staging: image ${{ needs.image.outputs.digest || 'unchanged' }}, chart ${{ needs.chart.outputs.digest || 'unchanged' }}"
+    name: Deploy hello-api to staging
     needs: [image, chart]
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.image.outputs.digest != '' || needs.chart.outputs.digest != '')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          repository: genokan/practice-lab
-          token: ${{ secrets.MANIFESTS_TOKEN }}
-          path: manifests
-          persist-credentials: false
-      - if: needs.image.outputs.digest != ''
-        name: Select image
-        uses: mikefarah/yq@v4.47.2
-        with:
-          cmd: >-
-            yq -i '.image.digest = "${{ needs.image.outputs.digest }}"'
-            manifests/k8s/apps/hello-api/values/staging.yaml
-      - if: needs.chart.outputs.digest != ''
-        name: Select chart
-        uses: mikefarah/yq@v4.47.2
-        with:
-          cmd: >-
-            yq -i '(.spec.generators[] | select(has("list")) | .list.elements[] |
-            select(.application == "hello-api-staging") | .chartRevision) =
-            "${{ needs.chart.outputs.digest }}"' manifests/k8s/apps/hello-api/appset.yaml
-      - id: pull-request
-        name: Create staging deployment PR
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.MANIFESTS_TOKEN }}
-          path: manifests
-          branch: automation/hello-api-staging
-          delete-branch: true
-          commit-message: "deploy: update hello-api staging"
-          title: "deploy: hello-api staging"
-          body: |
-            Deploys selected immutable artifacts to staging.
-
-            **Image digest:** `${{ needs.image.outputs.digest || 'unchanged' }}`
-
-            **Chart digest:** `${{ needs.chart.outputs.digest || 'unchanged' }}`
-      - if: steps.pull-request.outputs.pull-request-number
-        name: Merge staging deployment PR
-        env:
-          GH_TOKEN: ${{ secrets.MANIFESTS_TOKEN }}
-        run: >-
-          gh pr merge "${{ steps.pull-request.outputs.pull-request-number }}"
-          --repo genokan/practice-lab --squash --delete-branch
+    uses: genokan/practice-lab/.github/workflows/deploy.yaml@main
+    with:
+      application: hello-api
+      environment: staging
+      source_environment: staging
+      image_digest: ${{ needs.image.outputs.digest }}
+      chart_digest: ${{ needs.chart.outputs.digest }}
+      source_sha: ${{ github.sha }}
+    secrets:
+      manifests_token: ${{ secrets.MANIFESTS_TOKEN }}
