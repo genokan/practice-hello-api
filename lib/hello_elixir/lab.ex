@@ -72,7 +72,11 @@ defmodule HelloElixir.Lab do
         })
 
       Process.send_after(self(), {:expire, state.token}, duration_seconds * 1_000)
-      Logger.warning("failure lab activated", mode: mode, duration_seconds: duration_seconds, value: value)
+      Logger.warning("failure lab activated",
+        mode: mode,
+        duration_seconds: duration_seconds,
+        value: value
+      )
       {:reply, {:ok, public_status(state)}, state}
     else
       {:error, _reason} = error -> {:reply, error, state}

@@ -34,7 +34,8 @@ defmodule HelloElixir.Metrics do
         end)
     }
 
-    {:noreply, %{state | requests: requests, histograms: Map.put(state.histograms, route, histogram)}}
+    {:noreply,
+     %{state | requests: requests, histograms: Map.put(state.histograms, route, histogram)}}
   end
 
   @impl true

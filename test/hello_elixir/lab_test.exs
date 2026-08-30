@@ -17,7 +17,11 @@ defmodule HelloElixir.LabTest do
 
   test "activates a bounded latency fault and resets it" do
     assert {:ok, %{mode: "latency", value: 25}} =
-             HelloElixir.Lab.activate(%{"mode" => "latency", "duration" => "10", "delay_ms" => "25"})
+             HelloElixir.Lab.activate(%{
+               "mode" => "latency",
+               "duration" => "10",
+               "delay_ms" => "25"
+             })
 
     assert :ok = HelloElixir.Lab.before_work()
     assert {:ok, %{mode: "idle"}} = HelloElixir.Lab.reset()
@@ -25,6 +29,10 @@ defmodule HelloElixir.LabTest do
 
   test "rejects an invalid fault setting" do
     assert {:error, :invalid_value} =
-             HelloElixir.Lab.activate(%{"mode" => "errors", "duration" => "10", "error_percent" => "101"})
+             HelloElixir.Lab.activate(%{
+               "mode" => "errors",
+               "duration" => "10",
+               "error_percent" => "101"
+             })
   end
 end

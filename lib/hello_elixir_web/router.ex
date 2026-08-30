@@ -8,11 +8,13 @@ defmodule HelloElixirWeb.Router do
 
   pipeline :browser do
     plug(:accepts, ["html"])
+
     plug(Plug.Parsers,
       parsers: [:urlencoded, :multipart, :json],
       pass: ["*/*"],
       json_decoder: Phoenix.json_library()
     )
+
     plug(HelloElixirWeb.MetricsPlug)
   end
 

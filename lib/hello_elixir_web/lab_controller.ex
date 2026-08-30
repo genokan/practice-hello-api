@@ -11,14 +11,22 @@ defmodule HelloElixirWeb.LabController do
   end
 
   def status(conn, _params) do
-    if HelloElixir.Lab.enabled?(), do: json(conn, HelloElixir.Lab.status()), else: send_resp(conn, :not_found, "not found")
+    if HelloElixir.Lab.enabled?(),
+      do: json(conn, HelloElixir.Lab.status()),
+      else: send_resp(conn, :not_found, "not found")
   end
 
   def activate(conn, params) do
     case HelloElixir.Lab.activate(params) do
-      {:ok, _status} -> redirect(conn, to: "/lab")
+      {:ok, _status} ->
+        redirect(conn, to: "/lab")
+
       {:error, _reason} ->
-        send_html(conn, :unprocessable_entity, page(HelloElixir.Lab.status(), "Invalid or out-of-range lab settings."))
+        send_html(
+          conn,
+          :unprocessable_entity,
+          page(HelloElixir.Lab.status(), "Invalid or out-of-range lab settings.")
+        )
     end
   end
 
