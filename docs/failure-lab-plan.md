@@ -14,7 +14,8 @@ that Argo CD deploys; `home-docker` continues to provision Grafana.
 
 ## Desired end state
 
-Staging has three `hello-api` pods behind the existing service and ingress. A
+Staging has two `hello-api` pods behind the existing service and ingress;
+production has three. A
 small HTML control page at `https://hello-staging.opsguy.io/lab` can activate a
 bounded fault on the individual pod that receives the request. Versioned k6
 profiles produce realistic concurrent requests. Grafana shows request rate,
@@ -35,7 +36,7 @@ resources.
   an explicit reset action, and a pod restart as the guaranteed last-resort
   reset.
 - **Pod-local on purpose.** Fault state lives in the target pod's memory. This
-  lets a three-replica service demonstrate partial failure and load balancing;
+  lets a replicated service demonstrate partial failure and load balancing;
   the page displays its pod hostname so the target is unambiguous.
 - **No new monitoring platform.** Extend the Prometheus, Loki, and Grafana
   paths already in use.
@@ -66,13 +67,17 @@ home-docker/
   config/monitoring/dashboards/practice-lab.json
 ```
 
-## Staging deployment baseline
+## Deployment baseline
 
-Set only staging to three replicas. This gives realistic service routing and
-partial-failure behaviour, although it is not node-level HA because all pods
-remain on the single k3s VM.
+Set staging to two replicas and production to three. This keeps staging cheaper
+while production exercises the more typical three-pod baseline. Neither is
+node-level HA because all pods remain on the single k3s VM.
 
 ```yaml
+# staging
+replicaCount: 2
+
+# production
 replicaCount: 3
 resources:
   requests:
@@ -195,16 +200,18 @@ to include Caddy, Traefik, TLS, and DNS in the exercise.
 
 ### 1. Baseline and observability
 
-1. Add the three-replica staging values, CPU limit, PDB, and soft topology
-   spread rule; keep production unchanged.
+1. Set staging to two replicas and production to three; add CPU limits, a PDB,
+   and a soft topology spread rule to the application chart. Keep all fault and
+   load controls disabled in production.
 2. Add request-count and request-duration instrumentation and test the
    Prometheus exposition format.
 3. Extend the existing Grafana dashboard and confirm each new series appears
    from all three pods.
 4. Document a baseline screenshot/query set before any failure is activated.
 
-**Acceptance:** three ready pods serve the staging site; Grafana shows request
-rate, p95/p99, CPU, memory, restarts, readiness, and logs for each pod.
+**Acceptance:** two ready staging pods and three ready production pods serve
+their intended environments; Grafana shows request rate, p95/p99, CPU, memory,
+restarts, readiness, and logs for each pod.
 
 ### 2. Fault console and safe modes
 

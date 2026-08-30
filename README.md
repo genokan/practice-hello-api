@@ -42,6 +42,7 @@ git diff --exit-code -- chart/README.md
 
 ## Failure lab
 
-The staging-only failure-lab design, including three-replica behaviour,
+The staging-only failure-lab design, including environment-specific replica
+behaviour,
 controlled in-app faults, k6 profiles, and Grafana observability, is documented
 in [docs/failure-lab-plan.md](docs/failure-lab-plan.md).
