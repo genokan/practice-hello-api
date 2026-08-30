@@ -6,6 +6,8 @@ defmodule HelloElixir.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      HelloElixir.Metrics,
+      HelloElixir.Lab,
       {Bandit, plug: HelloElixirWeb.Router, scheme: :http, port: app_port()}
     ]
 

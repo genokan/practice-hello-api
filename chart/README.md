@@ -1,6 +1,6 @@
 # hello-api
 
-![Version: 0.1.2](https://img.shields.io/badge/Version-0.1.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
+![Version: 0.1.3](https://img.shields.io/badge/Version-0.1.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
 
 A tiny, intentionally replaceable workload for the practice lab.
 
@@ -17,6 +17,9 @@ A tiny, intentionally replaceable workload for the practice lab.
 | ingress.className | string | `"traefik"` |  |
 | ingress.enabled | bool | `false` |  |
 | ingress.host | string | `""` |  |
+| lab.enabled | bool | `false` |  |
+| lab.maxDurationSeconds | int | `300` |  |
+| lab.maxLatencyMilliseconds | int | `5000` |  |
 | podAnnotations | object | `{}` |  |
 | replicaCount | int | `1` |  |
 | resources.limits.memory | string | `"64Mi"` |  |

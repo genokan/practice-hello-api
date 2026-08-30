@@ -31,6 +31,12 @@ spec:
           env:
             - name: APP_ENV
               value: {{ .Values.environment | quote }}
+            - name: LAB_ENABLED
+              value: {{ .Values.lab.enabled | quote }}
+            - name: LAB_MAX_DURATION_SECONDS
+              value: {{ .Values.lab.maxDurationSeconds | quote }}
+            - name: LAB_MAX_LATENCY_MILLISECONDS
+              value: {{ .Values.lab.maxLatencyMilliseconds | quote }}
             {{- range .Values.secretEnv }}
             - name: {{ .name }}
               valueFrom:
