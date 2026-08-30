@@ -1,5 +1,5 @@
 defmodule HelloElixirWeb.MetricsController do
-  import Plug.Conn
+  use Phoenix.Controller, formats: [:text]
 
   def show(conn, _params) do
     conn
