@@ -1,6 +1,6 @@
 # hello-api
 
-![Version: 0.1.3](https://img.shields.io/badge/Version-0.1.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
+![Version: 0.1.4](https://img.shields.io/badge/Version-0.1.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
 
 A tiny, intentionally replaceable workload for the practice lab.
 
@@ -20,6 +20,22 @@ A tiny, intentionally replaceable workload for the practice lab.
 | lab.enabled | bool | `false` |  |
 | lab.maxDurationSeconds | int | `300` |  |
 | lab.maxLatencyMilliseconds | int | `5000` |  |
+| load.enabled | bool | `false` |  |
+| load.image.pullPolicy | string | `"IfNotPresent"` |  |
+| load.image.repository | string | `"grafana/k6"` |  |
+| load.image.tag | string | `"1.7.1"` |  |
+| load.namePrefix | string | `"hello-api-load"` |  |
+| load.profiles[0].name | string | `"smoke"` |  |
+| load.profiles[0].script | string | `"smoke.js"` |  |
+| load.profiles[1].name | string | `"spike"` |  |
+| load.profiles[1].script | string | `"spike.js"` |  |
+| load.profiles[2].name | string | `"sustained"` |  |
+| load.profiles[2].script | string | `"sustained.js"` |  |
+| load.resources.limits.cpu | string | `"500m"` |  |
+| load.resources.limits.memory | string | `"256Mi"` |  |
+| load.resources.requests.cpu | string | `"50m"` |  |
+| load.resources.requests.memory | string | `"64Mi"` |  |
+| load.targetUrl | string | `"http://hello-api-staging-hello-api"` |  |
 | podAnnotations | object | `{}` |  |
 | replicaCount | int | `1` |  |
 | resources.limits.memory | string | `"64Mi"` |  |

@@ -1,0 +1,61 @@
+{{- if .Values.load.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.load.namePrefix }}-scripts
+  labels:
+    {{- include "hello.labels" . | nindent 4 }}
+    app.kubernetes.io/component: load-generator
+data:
+  {{- range .Values.load.profiles }}
+  {{ .script }}: |-
+{{ $.Files.Get (printf "files/k6/%s" .script) | indent 4 }}
+  {{- end }}
+{{- range .Values.load.profiles }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ printf "%s-%s" $.Values.load.namePrefix .name | trunc 63 | trimSuffix "-" }}
+  labels:
+    {{- include "hello.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: load-generator
+    practice-lab.opsguy.io/load-profile: {{ .name | quote }}
+spec:
+  schedule: "0 0 1 1 *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels:
+            {{- include "hello.labels" $ | nindent 12 }}
+            app.kubernetes.io/component: load-generator
+            practice-lab.opsguy.io/load-profile: {{ .name | quote }}
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: k6
+              image: {{ printf "%s:%s" $.Values.load.image.repository $.Values.load.image.tag | quote }}
+              imagePullPolicy: {{ $.Values.load.image.pullPolicy }}
+              args: ["run", "/scripts/{{ .script }}"]
+              env:
+                - name: TARGET_URL
+                  value: {{ $.Values.load.targetUrl | quote }}
+              resources:
+                {{- toYaml $.Values.load.resources | nindent 16 }}
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
+          volumes:
+            - name: scripts
+              configMap:
+                name: {{ $.Values.load.namePrefix }}-scripts
+{{- end }}
+{{- end }}

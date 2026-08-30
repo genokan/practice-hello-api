@@ -51,7 +51,7 @@ practice-hello-api/
   docs/failure-lab-plan.md
   lib/hello_elixir/lab/          # fault state, workers, metric accumulator
   lib/hello_elixir_web/          # /lab HTML and JSON control endpoints
-  load/k6/
+  chart/files/k6/
     smoke.js
     spike.js
     sustained.js

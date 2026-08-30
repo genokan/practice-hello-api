@@ -46,3 +46,25 @@ The staging-only failure-lab design, including environment-specific replica
 behaviour,
 controlled in-app faults, k6 profiles, and Grafana observability, is documented
 in [docs/failure-lab-plan.md](docs/failure-lab-plan.md).
+
+## Run a staging load profile
+
+When staging enables the chart's load templates, Argo creates three **suspended**
+CronJobs. They never schedule a test by themselves. Start a fresh, manually named
+Job with normal Kubernetes commands:
+
+```sh
+kubectl -n hello-staging create job \
+  --from=cronjob/hello-api-load-smoke \
+  hello-api-load-smoke-01
+kubectl -n hello-staging logs -f job/hello-api-load-smoke-01
+```
+
+- `smoke`: two virtual users for 30 seconds; deployment verification.
+- `spike`: ramps to 20 virtual users for a short failure exercise.
+- `sustained`: eight virtual users for five minutes; latency and memory trends.
+
+Replace `smoke` in both command positions with `spike` or `sustained`. The
+profiles target the in-cluster Service (`/work`), so they measure the application
+and its Kubernetes Service rather than DNS, Caddy, Traefik, or TLS. They are
+staging-only and have no production templates.
