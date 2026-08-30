@@ -54,7 +54,19 @@ resources:
     cpu: 25m
     memory: 32Mi
   limits:
+    cpu: 200m
     memory: 64Mi
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Soft scheduling preference only: ScheduleAnyway remains runnable on the
+# lab's single Kubernetes node while retaining the production topology shape.
+topologySpread:
+  enabled: true
+  maxSkew: 1
+  topologyKey: kubernetes.io/hostname
 
 podAnnotations: {}
 

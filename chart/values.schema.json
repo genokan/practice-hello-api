@@ -41,6 +41,21 @@
         }
       }
     },
+    "podDisruptionBudget": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "minAvailable": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "topologySpread": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maxSkew": { "type": "integer", "minimum": 1 },
+        "topologyKey": { "type": "string", "minLength": 1 }
+      }
+    },
     "image": {
       "type": "object",
       "required": ["repository", "tag"],
