@@ -13,6 +13,31 @@ lab:
   maxDurationSeconds: 300
   maxLatencyMilliseconds: 5000
 
+# Staging-only, manually started k6 Job templates. Argo renders suspended
+# CronJobs; start a one-off run with `kubectl create job --from=cronjob/...`.
+load:
+  enabled: false
+  image:
+    repository: grafana/k6
+    tag: 1.7.1
+    pullPolicy: IfNotPresent
+  namePrefix: hello-api-load
+  targetUrl: http://hello-api-staging-hello-api
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  profiles:
+    - name: smoke
+      script: smoke.js
+    - name: spike
+      script: spike.js
+    - name: sustained
+      script: sustained.js
+
 service:
   type: ClusterIP
   port: 80
