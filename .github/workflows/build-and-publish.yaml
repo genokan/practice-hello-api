@@ -1,0 +1,218 @@
+name: Build and Publish
+
+on:
+  pull_request:
+    paths:
+      - ".dockerignore"
+      - "Dockerfile"
+      - "config/**"
+      - "lib/**"
+      - "mix.exs"
+      - "mix.lock"
+      - "test/**"
+      - "chart/**"
+      - ".github/workflows/build-and-publish.yaml"
+  push:
+    branches: [main]
+    paths:
+      - ".dockerignore"
+      - "Dockerfile"
+      - "config/**"
+      - "lib/**"
+      - "mix.exs"
+      - "mix.lock"
+      - "test/**"
+      - "chart/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  pull-requests: read
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      image: ${{ steps.filter.outputs.image }}
+      chart: ${{ steps.filter.outputs.chart }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'config/**'
+              - 'lib/**'
+              - 'mix.exs'
+              - 'mix.lock'
+              - 'test/**'
+            image:
+              - '.dockerignore'
+              - 'Dockerfile'
+              - 'config/**'
+              - 'lib/**'
+              - 'mix.exs'
+              - 'mix.lock'
+            chart:
+              - 'chart/**'
+
+  app:
+    name: Test app
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.2.4"
+          elixir-version: "1.18.4"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: mix-${{ runner.os }}-otp-27.2.4-elixir-1.18.4-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-${{ runner.os }}-otp-27.2.4-elixir-1.18.4-
+      - run: mix deps.get
+      - run: mix format --check-formatted
+      - run: mix test
+
+  image:
+    name: Build image
+    needs: [changes, app]
+    if: always() && needs.changes.outputs.image == 'true' && (needs.app.result == 'success' || needs.app.result == 'skipped')
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          platforms: linux/arm64
+          build-args: APP_VERSION=${{ github.sha }}
+          tags: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+          cache-from: type=gha,scope=hello-api-arm64
+          cache-to: type=gha,mode=max,scope=hello-api-arm64
+
+  chart:
+    name: Build chart
+    needs: changes
+    if: needs.changes.outputs.chart == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.2.3
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.5"
+      - name: Check chart version
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          comparison_ref="${BASE:-$BEFORE}"
+          if [ -z "$comparison_ref" ]; then
+            comparison_ref="$(git rev-parse HEAD^)"
+          fi
+          previous_version="$(git show "$comparison_ref:chart/Chart.yaml" | awk '$1 == "version:" { print $2 }')"
+          current_version="$(awk '$1 == "version:" { print $2 }' chart/Chart.yaml)"
+          test "$current_version" != "$previous_version" || {
+            echo "chart/ changed without a Chart.yaml version bump ($current_version)." >&2
+            exit 1
+          }
+      - run: helm lint chart
+      - run: helm template hello-api chart > /tmp/hello-api.yaml
+      - run: go run github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2 --chart-search-root=chart
+      - run: git diff --exit-code -- chart/README.md
+      - run: helm package chart --destination /tmp/charts
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+      - id: push
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        name: Publish chart
+        env:
+          CHART_REGISTRY: oci://ghcr.io/${{ github.repository }}/charts
+        run: |
+          set -euo pipefail
+          chart_package="$(find /tmp/charts -maxdepth 1 -name '*.tgz' -print -quit)"
+          test -n "$chart_package"
+          push_output="$(helm push "$chart_package" "$CHART_REGISTRY")"
+          printf '%s\n' "$push_output"
+          digest="$(printf '%s\n' "$push_output" | awk '/^Digest:/ { print $2 }')"
+          test -n "$digest"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+  staging:
+    name: "Deploy staging: image ${{ needs.image.outputs.digest || 'unchanged' }}, chart ${{ needs.chart.outputs.digest || 'unchanged' }}"
+    needs: [image, chart]
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.image.outputs.digest != '' || needs.chart.outputs.digest != '')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: genokan/practice-lab
+          token: ${{ secrets.MANIFESTS_TOKEN }}
+          path: manifests
+          persist-credentials: false
+      - if: needs.image.outputs.digest != ''
+        name: Select image
+        uses: mikefarah/yq@v4.47.2
+        with:
+          cmd: >-
+            yq -i '.image.digest = "${{ needs.image.outputs.digest }}"'
+            manifests/k8s/apps/hello-api/values/staging.yaml
+      - if: needs.chart.outputs.digest != ''
+        name: Select chart
+        uses: mikefarah/yq@v4.47.2
+        with:
+          cmd: >-
+            yq -i '(.spec.generators[] | select(has("list")) | .list.elements[] |
+            select(.application == "hello-api-staging") | .chartRevision) =
+            "${{ needs.chart.outputs.digest }}"' manifests/k8s/apps/hello-api/appset.yaml
+      - id: pull-request
+        name: Create staging deployment PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.MANIFESTS_TOKEN }}
+          path: manifests
+          branch: automation/hello-api-staging
+          delete-branch: true
+          commit-message: "deploy: update hello-api staging"
+          title: "deploy: hello-api staging"
+          body: |
+            Deploys selected immutable artifacts to staging.
+
+            **Image digest:** `${{ needs.image.outputs.digest || 'unchanged' }}`
+
+            **Chart digest:** `${{ needs.chart.outputs.digest || 'unchanged' }}`
+      - if: steps.pull-request.outputs.pull-request-number
+        name: Merge staging deployment PR
+        env:
+          GH_TOKEN: ${{ secrets.MANIFESTS_TOKEN }}
+        run: >-
+          gh pr merge "${{ steps.pull-request.outputs.pull-request-number }}"
+          --repo genokan/practice-lab --squash --delete-branch
