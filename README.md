@@ -39,3 +39,10 @@ helm template hello-api chart
 go run github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2 --chart-search-root=chart
 git diff --exit-code -- chart/README.md
 ```
+
+## Failure lab
+
+The staging-only failure-lab design, including environment-specific replica
+behaviour,
+controlled in-app faults, k6 profiles, and Grafana observability, is documented
+in [docs/failure-lab-plan.md](docs/failure-lab-plan.md).
