@@ -126,7 +126,8 @@ defmodule HelloElixir.Lab do
           do: {:ok, duration},
           else: {:error, :invalid_duration}
 
-      _ -> {:error, :invalid_duration}
+      _ ->
+        {:error, :invalid_duration}
     end
   end
 
