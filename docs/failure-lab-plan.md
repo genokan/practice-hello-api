@@ -12,6 +12,29 @@ source, Helm chart, fault controls, metrics, and k6 scripts belong in this
 repository. `practice-lab` continues to own the staging and production values
 that Argo CD deploys; `home-docker` continues to provision Grafana.
 
+## Current implementation status
+
+Implemented and deployed:
+
+- staging runs two pods and production runs three;
+- staging has the `/lab` console with bounded latency, error, and readiness
+  modes, reset, expiry, and pod-local state; production disables the console;
+- `/metrics` exposes request counters, duration histograms, availability, and
+  active-lab-mode metrics; Prometheus and the existing `Practice Lab` Grafana
+  dashboard collect and display them;
+- staging renders suspended `hello-api-load-{smoke,spike,sustained}` CronJobs;
+  their scripts target the in-cluster Service and are started with
+  `kubectl create job`;
+- the chart supports a 200m CPU limit, a soft hostname spread preference, and
+  an optional PDB. Staging currently uses `minAvailable: 1`. Production has
+  its CPU limit but needs its normal release-driven chart promotion before the
+  new PDB template is available there.
+
+Still planned, not represented as complete below: the CPU-burn and
+memory-pressure UI modes, deliberate process exit, app resource panels sourced
+from container metrics, a Vault-delivered PostgreSQL credential and real query,
+and the follow-on HPA/dependency/network exercises.
+
 ## Desired end state
 
 Staging has two `hello-api` pods behind the existing service and ingress;
