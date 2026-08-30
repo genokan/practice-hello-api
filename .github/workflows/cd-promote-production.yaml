@@ -8,8 +8,33 @@ permissions:
   contents: read
 
 jobs:
+  staging-selections:
+    name: CD — Read staged image and chart digests
+    runs-on: ubuntu-latest
+    outputs:
+      image_digest: ${{ steps.selections.outputs.image_digest }}
+      chart_digest: ${{ steps.selections.outputs.chart_digest }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: genokan/practice-lab
+          token: ${{ secrets.MANIFESTS_TOKEN }}
+          path: manifests
+          persist-credentials: false
+      - name: Read and validate staging selections
+        id: selections
+        run: |
+          set -euo pipefail
+          image_digest="$(awk '/^  digest:/ { print $2 }' manifests/k8s/apps/hello-api/values/staging.yaml)"
+          chart_digest="$(awk '/application: hello-api-staging/{seen=1} seen && /chartRevision:/{print $2; exit}' manifests/k8s/apps/hello-api/appset.yaml)"
+          case "$image_digest" in sha256:*) ;; *) echo "Staging image selection is not a digest" >&2; exit 1;; esac
+          case "$chart_digest" in sha256:*) ;; *) echo "Staging chart selection is not a digest" >&2; exit 1;; esac
+          echo "image_digest=$image_digest" >> "$GITHUB_OUTPUT"
+          echo "chart_digest=$chart_digest" >> "$GITHUB_OUTPUT"
+
   propose-production:
-    name: CD — Propose production promotion
+    name: CD — Draft prod promotion (image ${{ needs.staging-selections.outputs.image_digest }}, chart ${{ needs.staging-selections.outputs.chart_digest }})
+    needs: staging-selections
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -18,18 +43,11 @@ jobs:
           token: ${{ secrets.MANIFESTS_TOKEN }}
           path: manifests
           persist-credentials: false
-      - name: Validate staging selections
-        run: |
-          set -euo pipefail
-          image_digest="$(awk '/^  digest:/ { print $2 }' manifests/k8s/apps/hello-api/values/staging.yaml)"
-          chart_digest="$(awk '/application: hello-api-staging/{seen=1} seen && /chartRevision:/{print $2; exit}' manifests/k8s/apps/hello-api/appset.yaml)"
-          case "$image_digest" in sha256:*) ;; *) echo "Staging image selection is not a digest" >&2; exit 1;; esac
-          case "$chart_digest" in sha256:*) ;; *) echo "Staging chart selection is not a digest" >&2; exit 1;; esac
       - name: Copy staging image selection to production
         uses: mikefarah/yq@v4.47.2
         with:
           cmd: >-
-            yq -i '.image.digest = load("manifests/k8s/apps/hello-api/values/staging.yaml").image.digest'
+            yq -i '.image.digest = "${{ needs.staging-selections.outputs.image_digest }}"'
             manifests/k8s/apps/hello-api/values/prod.yaml
       - name: Copy staging chart selection to production
         uses: mikefarah/yq@v4.47.2
@@ -37,19 +55,23 @@ jobs:
           cmd: >-
             yq -i '(.spec.generators[] | select(has("list")) | .list.elements[] |
             select(.application == "hello-api-prod") | .chartRevision) =
-            (.spec.generators[] | select(has("list")) | .list.elements[] |
-            select(.application == "hello-api-staging") | .chartRevision)'
+            "${{ needs.staging-selections.outputs.chart_digest }}"'
             manifests/k8s/apps/hello-api/appset.yaml
-      - name: Open production promotion PR
+      - name: Open draft production promotion PR
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.MANIFESTS_TOKEN }}
           path: manifests
           branch: automation/hello-api-prod
           delete-branch: true
-          commit-message: "cd: promote hello-api ${{ github.event.release.tag_name }}"
-          title: "cd: promote hello-api ${{ github.event.release.tag_name }} to prod"
+          draft: true
+          commit-message: "cd: draft hello-api production promotion ${{ github.event.release.tag_name }}"
+          title: "cd: draft hello-api production promotion ${{ github.event.release.tag_name }}"
           body: |
-            Promotes the exact staging image and chart selections for release ${{ github.event.release.tag_name }}.
+            Draft promotion for release ${{ github.event.release.tag_name }}.
+
+            **Image digest:** `${{ needs.staging-selections.outputs.image_digest }}`
+
+            **Chart digest:** `${{ needs.staging-selections.outputs.chart_digest }}`
 
             Release notes: ${{ github.event.release.html_url }}

@@ -43,7 +43,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=hello-api-arm64
 
   propose-staging:
-    name: CD — Propose staging image
+    name: CD — Auto-merge staging image promotion (${{ needs.image.outputs.digest }})
     needs: image
     runs-on: ubuntu-latest
     steps:
@@ -59,16 +59,26 @@ jobs:
           cmd: >-
             yq -i '.image.digest = "${{ needs.image.outputs.digest }}"'
             manifests/k8s/apps/hello-api/values/staging.yaml
-      - name: Open staging image PR
+      - name: Open staging image promotion PR
+        id: staging-pr
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.MANIFESTS_TOKEN }}
           path: manifests
           branch: automation/hello-api-staging-image
           delete-branch: true
-          commit-message: "cd: stage hello-api image ${{ needs.image.outputs.digest }}"
-          title: "cd: stage hello-api image"
+          commit-message: "cd: promote hello-api image ${{ needs.image.outputs.digest }} to staging"
+          title: "cd: promote hello-api image ${{ needs.image.outputs.digest }} to staging"
           body: |
-            Selects the immutable image built from ${{ github.sha }} for staging.
+            Promotes the immutable image built from ${{ github.sha }} to staging.
 
-            This changes only the staging image digest; chart selection is independent.
+            **Image digest:** `${{ needs.image.outputs.digest }}`
+
+            This changes only the staging image selection; chart selection is independent.
+      - name: CD — Auto-merge staging image promotion
+        if: steps.staging-pr.outputs.pull-request-number
+        env:
+          GH_TOKEN: ${{ secrets.MANIFESTS_TOKEN }}
+        run: >-
+          gh pr merge "${{ steps.staging-pr.outputs.pull-request-number }}"
+          --repo genokan/practice-lab --squash --delete-branch
