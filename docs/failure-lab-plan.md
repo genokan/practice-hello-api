@@ -79,6 +79,8 @@ replicaCount: 2
 
 # production
 replicaCount: 3
+
+# both environments
 resources:
   requests:
     cpu: 50m
@@ -88,11 +90,12 @@ resources:
     memory: 256Mi
 ```
 
-Add a `PodDisruptionBudget` with `minAvailable: 2` and a *preferred* topology
-spread rule. The latter must stay soft: a required node spread rule would make
-pods unschedulable on a one-node cluster. A later autoscaling exercise can add
-an HPA with `minReplicas: 3` and `maxReplicas: 6`; it is deliberately not part
-of the first implementation.
+Add environment-appropriate `PodDisruptionBudget`s: staging keeps one of its
+two pods available and production keeps two of its three. Add a *preferred*
+topology spread rule. The latter must stay soft: a required node spread rule
+would make pods unschedulable on a one-node cluster. A later autoscaling
+exercise can add an HPA with `minReplicas: 3` and `maxReplicas: 6`; it is
+deliberately not part of the first implementation.
 
 ## Fault console
 

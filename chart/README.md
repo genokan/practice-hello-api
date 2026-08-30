@@ -1,6 +1,6 @@
 # hello-api
 
-![Version: 0.1.4](https://img.shields.io/badge/Version-0.1.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
+![Version: 0.1.5](https://img.shields.io/badge/Version-0.1.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
 
 A tiny, intentionally replaceable workload for the practice lab.
 
@@ -37,7 +37,10 @@ A tiny, intentionally replaceable workload for the practice lab.
 | load.resources.requests.memory | string | `"64Mi"` |  |
 | load.targetUrl | string | `"http://hello-api-staging-hello-api"` |  |
 | podAnnotations | object | `{}` |  |
+| podDisruptionBudget.enabled | bool | `false` |  |
+| podDisruptionBudget.minAvailable | int | `1` |  |
 | replicaCount | int | `1` |  |
+| resources.limits.cpu | string | `"200m"` |  |
 | resources.limits.memory | string | `"64Mi"` |  |
 | resources.requests.cpu | string | `"25m"` |  |
 | resources.requests.memory | string | `"32Mi"` |  |
@@ -45,4 +48,7 @@ A tiny, intentionally replaceable workload for the practice lab.
 | service.port | int | `80` |  |
 | service.targetPort | int | `8080` |  |
 | service.type | string | `"ClusterIP"` |  |
+| topologySpread.enabled | bool | `true` |  |
+| topologySpread.maxSkew | int | `1` |  |
+| topologySpread.topologyKey | string | `"kubernetes.io/hostname"` |  |
 
