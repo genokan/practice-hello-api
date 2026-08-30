@@ -8,6 +8,11 @@ image:
 
 environment: development
 
+lab:
+  enabled: false
+  maxDurationSeconds: 300
+  maxLatencyMilliseconds: 5000
+
 service:
   type: ClusterIP
   port: 80

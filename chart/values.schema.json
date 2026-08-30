@@ -5,6 +5,14 @@
   "properties": {
     "replicaCount": { "type": "integer", "minimum": 1 },
     "environment": { "type": "string", "minLength": 1 },
+    "lab": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maxDurationSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "maxLatencyMilliseconds": { "type": "integer", "minimum": 0, "maximum": 60000 }
+      }
+    },
     "image": {
       "type": "object",
       "required": ["repository", "tag"],
