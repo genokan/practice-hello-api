@@ -121,7 +121,11 @@ defmodule HelloElixir.Lab do
 
   defp parse_duration(value) do
     case Integer.parse(value || "") do
-      {duration, ""} when duration > 0 and duration <= max_duration_seconds() -> {:ok, duration}
+      {duration, ""} when duration > 0 ->
+        if duration <= max_duration_seconds(),
+          do: {:ok, duration},
+          else: {:error, :invalid_duration}
+
       _ -> {:error, :invalid_duration}
     end
   end
