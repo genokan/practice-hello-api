@@ -84,6 +84,7 @@ defmodule HelloElixir.LoadRunner do
 
   defp cronjob_name(profile),
     do: "#{Application.fetch_env!(:hello_elixir, :lab_load_name_prefix)}-#{profile}"
+
   defp namespace, do: System.get_env("POD_NAMESPACE", "default")
 
   defp request(method, path, body \\ nil) do
@@ -94,6 +95,7 @@ defmodule HelloElixir.LoadRunner do
     headers = [{~c"authorization", 'Bearer ' ++ token}, {~c"content-type", ~c"application/json"}]
     url = 'https://kubernetes.default.svc' ++ String.to_charlist(path)
     request = if body, do: {url, headers, ~c"application/json", body}, else: {url, headers}
+
     options = [
       ssl: [
         verify: :verify_peer,

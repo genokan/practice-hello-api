@@ -150,6 +150,7 @@ defmodule HelloElixir.Lab do
   end
 
   defp parse_value(:readiness, _params), do: {:ok, 1}
+
   defp parse_value(:cpu, params),
     do: parse_bounded_integer(params["cpu_workers"], max_cpu_workers())
 

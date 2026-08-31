@@ -140,6 +140,7 @@ defmodule HelloElixirWeb.LabController do
 
   defp load_html(:disabled),
     do: "<p class=\"warning\">k6 controls are disabled for this environment.</p>"
+
   defp load_html(:unavailable), do: "<p class=\"error\">k6 status is temporarily unavailable.</p>"
 
   defp send_html(conn, status, body) do
