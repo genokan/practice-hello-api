@@ -10,7 +10,11 @@ defmodule HelloElixir.LoadRunner do
 
   def list do
     with true <- enabled?(),
-         {:ok, 200, body} <- request(:get, "/apis/batch/v1/namespaces/#{namespace()}/jobs?labelSelector=#{URI.encode_www_form(@load_label)}"),
+         {:ok, 200, body} <-
+           request(
+             :get,
+             "/apis/batch/v1/namespaces/#{namespace()}/jobs?labelSelector=#{URI.encode_www_form(@load_label)}"
+           ),
          {:ok, payload} <- Jason.decode(body) do
       {:ok,
        payload
@@ -31,7 +35,8 @@ defmodule HelloElixir.LoadRunner do
          {:ok, cronjob} <- Jason.decode(body),
          job_spec when is_map(job_spec) <- get_in(cronjob, ["spec", "jobTemplate", "spec"]),
          job = new_job(profile, job_spec),
-         {:ok, 201, _body} <- request(:post, "/apis/batch/v1/namespaces/#{namespace()}/jobs", Jason.encode!(job)) do
+         {:ok, 201, _body} <-
+           request(:post, "/apis/batch/v1/namespaces/#{namespace()}/jobs", Jason.encode!(job)) do
       :ok
     else
       false -> {:error, :invalid_profile}
@@ -74,8 +79,11 @@ defmodule HelloElixir.LoadRunner do
     }
   end
 
-  defp cronjob_path(profile), do: "/apis/batch/v1/namespaces/#{namespace()}/cronjobs/#{cronjob_name(profile)}"
-  defp cronjob_name(profile), do: "#{Application.fetch_env!(:hello_elixir, :lab_load_name_prefix)}-#{profile}"
+  defp cronjob_path(profile),
+    do: "/apis/batch/v1/namespaces/#{namespace()}/cronjobs/#{cronjob_name(profile)}"
+
+  defp cronjob_name(profile),
+    do: "#{Application.fetch_env!(:hello_elixir, :lab_load_name_prefix)}-#{profile}"
   defp namespace, do: System.get_env("POD_NAMESPACE", "default")
 
   defp request(method, path, body \\ nil) do
@@ -86,7 +94,13 @@ defmodule HelloElixir.LoadRunner do
     headers = [{~c"authorization", 'Bearer ' ++ token}, {~c"content-type", ~c"application/json"}]
     url = 'https://kubernetes.default.svc' ++ String.to_charlist(path)
     request = if body, do: {url, headers, ~c"application/json", body}, else: {url, headers}
-    options = [ssl: [verify: :verify_peer, cacertfile: String.to_charlist(Path.join(@service_account_path, "ca.crt")), server_name_indication: ~c"kubernetes.default.svc"]]
+    options = [
+      ssl: [
+        verify: :verify_peer,
+        cacertfile: String.to_charlist(Path.join(@service_account_path, "ca.crt")),
+        server_name_indication: ~c"kubernetes.default.svc"
+      ]
+    ]
 
     case :httpc.request(method, request, options, []) do
       {:ok, {{_http, status, _reason}, _headers, response}} -> {:ok, status, to_string(response)}

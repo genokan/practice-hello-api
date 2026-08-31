@@ -150,8 +150,11 @@ defmodule HelloElixir.Lab do
   end
 
   defp parse_value(:readiness, _params), do: {:ok, 1}
-  defp parse_value(:cpu, params), do: parse_bounded_integer(params["cpu_workers"], max_cpu_workers())
-  defp parse_value(:memory, params), do: parse_bounded_integer(params["memory_mib"], max_memory_mib())
+  defp parse_value(:cpu, params),
+    do: parse_bounded_integer(params["cpu_workers"], max_cpu_workers())
+
+  defp parse_value(:memory, params),
+    do: parse_bounded_integer(params["memory_mib"], max_memory_mib())
 
   defp parse_bounded_integer(value, maximum) do
     case Integer.parse(value || "") do
@@ -175,7 +178,9 @@ defmodule HelloElixir.Lab do
   defp start_fault_workers(%{mode: :cpu, value: count} = state) do
     workers =
       for _ <- 1..count do
-        Task.Supervisor.async_nolink(HelloElixir.Lab.TaskSupervisor, fn -> burn_cpu(<<0::8192>>) end).pid
+        Task.Supervisor.async_nolink(HelloElixir.Lab.TaskSupervisor, fn ->
+          burn_cpu(<<0::8192>>)
+        end).pid
       end
 
     %{state | workers: workers}

@@ -45,9 +45,15 @@ defmodule HelloElixirWeb.LabController do
 
   def start_load(conn, %{"profile" => profile}) do
     case HelloElixir.LoadRunner.start(profile) do
-      :ok -> redirect(conn, to: "/lab")
+      :ok ->
+        redirect(conn, to: "/lab")
+
       {:error, _reason} ->
-        send_html(conn, :unprocessable_entity, page(HelloElixir.Lab.status(), load_jobs(), "Could not start that load profile."))
+        send_html(
+          conn,
+          :unprocessable_entity,
+          page(HelloElixir.Lab.status(), load_jobs(), "Could not start that load profile.")
+        )
     end
   end
 
@@ -132,7 +138,8 @@ defmodule HelloElixirWeb.LabController do
     """
   end
 
-  defp load_html(:disabled), do: "<p class=\"warning\">k6 controls are disabled for this environment.</p>"
+  defp load_html(:disabled),
+    do: "<p class=\"warning\">k6 controls are disabled for this environment.</p>"
   defp load_html(:unavailable), do: "<p class=\"error\">k6 status is temporarily unavailable.</p>"
 
   defp send_html(conn, status, body) do
