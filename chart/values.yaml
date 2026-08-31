@@ -45,6 +45,8 @@ load:
       script: stress.js
     - name: sustained
       script: sustained.js
+    - name: soak
+      script: soak.js
 
 service:
   type: ClusterIP

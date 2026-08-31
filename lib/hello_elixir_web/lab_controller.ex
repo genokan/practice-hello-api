@@ -154,9 +154,10 @@ defmodule HelloElixirWeb.LabController do
         <select name="profile">
           <option value="smoke">Smoke — light verification</option>
           <option value="standard">Standard — 10 virtual users for 30 minutes</option>
-          <option value="spike">Spike — short high concurrency</option>
-          <option value="stress">Stress — maximum sustained concurrency</option>
-          <option value="sustained">Sustained — steady pressure</option>
+          <option value="spike">Spike — 200 virtual users for 5 minutes</option>
+          <option value="stress">Stress — 300 virtual users for 22 minutes</option>
+          <option value="sustained">Sustained — 25 virtual users for 30 minutes</option>
+          <option value="soak">Soak — 10 virtual users for 2 hours</option>
         </select>
       </label>
       <button type="submit">Start k6 run</button>

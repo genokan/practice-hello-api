@@ -5,10 +5,10 @@ const targetUrl = __ENV.TARGET_URL || "http://hello-api-staging-hello-api";
 
 export const options = {
   stages: [
-    { duration: "10s", target: 25 },
-    { duration: "30s", target: 100 },
-    { duration: "30s", target: 200 },
-    { duration: "20s", target: 0 },
+    { duration: "1m", target: 50 },
+    { duration: "1m", target: 200 },
+    { duration: "2m", target: 200 },
+    { duration: "1m", target: 0 },
   ],
   thresholds: {
     http_req_failed: ["rate<0.05"],
