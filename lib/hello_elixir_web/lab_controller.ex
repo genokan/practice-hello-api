@@ -139,8 +139,11 @@ defmodule HelloElixirWeb.LabController do
 
     history =
       case completed_jobs do
-        [] -> "<p>No completed runs yet.</p>"
-        _ -> "<div class=\"run-history\"><table><thead><tr><th>Profile</th><th>Job</th><th>Status</th><th>Started</th><th>Completed</th></tr></thead><tbody>#{load_history_rows(completed_jobs)}</tbody></table></div>"
+        [] ->
+          "<p>No completed runs yet.</p>"
+
+        _ ->
+          "<div class=\"run-history\"><table><thead><tr><th>Profile</th><th>Job</th><th>Status</th><th>Started</th><th>Completed</th></tr></thead><tbody>#{load_history_rows(completed_jobs)}</tbody></table></div>"
       end
 
     """
