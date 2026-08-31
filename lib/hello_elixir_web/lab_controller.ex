@@ -60,7 +60,8 @@ defmodule HelloElixirWeb.LabController do
   defp page(status, load, error \\ nil, notice \\ nil) do
     error_html = if error, do: "<p class=\"error\">#{error}</p>", else: ""
     notice_html = if notice, do: "<p class=\"notice\">#{escape(notice)}</p>", else: ""
-    refresh_html = if load_active?(load), do: "<meta http-equiv=\"refresh\" content=\"5\">", else: ""
+    refresh_html =
+      if load_active?(load), do: "<meta http-equiv=\"refresh\" content=\"5\">", else: ""
 
     """
     <!doctype html>
@@ -166,7 +167,8 @@ defmodule HelloElixirWeb.LabController do
     end
   end
 
-  defp started_message(%{"started" => profile}), do: "Started #{profile}; waiting for the Job to run."
+  defp started_message(%{"started" => profile}),
+    do: "Started #{profile}; waiting for the Job to run."
   defp started_message(_params), do: nil
 
   defp send_html(conn, status, body) do
