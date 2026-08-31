@@ -9,6 +9,16 @@ parse_integer = fn variable, default ->
   end
 end
 
+log_level =
+  case System.get_env("LOG_LEVEL", "info") |> String.downcase() do
+    "debug" -> :debug
+    "info" -> :info
+    "warning" -> :warning
+    "error" -> :error
+    "critical" -> :critical
+    _ -> :info
+  end
+
 config :hello_elixir,
   port: port,
   app_environment: System.get_env("APP_ENV", "development"),
@@ -17,3 +27,5 @@ config :hello_elixir,
   lab_enabled: System.get_env("LAB_ENABLED") == "true",
   lab_max_duration_seconds: parse_integer.("LAB_MAX_DURATION_SECONDS", 300),
   lab_max_latency_milliseconds: parse_integer.("LAB_MAX_LATENCY_MILLISECONDS", 5_000)
+
+config :logger, level: log_level
