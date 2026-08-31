@@ -22,7 +22,7 @@ Implemented and deployed:
 - `/metrics` exposes request counters, duration histograms, availability, and
   active-lab-mode metrics; Prometheus and the existing `Practice Lab` Grafana
   dashboard collect and display them;
-- staging renders suspended `hello-api-load-{smoke,spike,stress,sustained}`
+- staging renders suspended `hello-api-load-{smoke,standard,spike,stress,sustained}`
   CronJobs; the UI starts a Job from one selected template through a narrowly
   scoped namespace Role;
 - the chart supports a 200m CPU limit, a soft hostname spread preference, and
@@ -204,6 +204,8 @@ never starts a load run.
 Profiles:
 
 - `smoke`: low, short traffic to verify a deployment;
+- `standard`: a 30-minute moderate baseline that can run with an additional
+  spike or stress Job;
 - `spike`: a quick rise in virtual users for CPU/throttling and error testing;
 - `stress`: deliberately high concurrency for saturation and throttling;
 - `sustained`: several minutes of steady traffic for latency and memory trends.

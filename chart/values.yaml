@@ -37,6 +37,8 @@ load:
   profiles:
     - name: smoke
       script: smoke.js
+    - name: standard
+      script: standard.js
     - name: spike
       script: spike.js
     - name: stress
