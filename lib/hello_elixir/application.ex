@@ -7,6 +7,7 @@ defmodule HelloElixir.Application do
   def start(_type, _args) do
     children = [
       HelloElixir.Metrics,
+      {Task.Supervisor, name: HelloElixir.Lab.TaskSupervisor},
       HelloElixir.Lab,
       {Bandit, plug: HelloElixirWeb.Router, scheme: :http, port: app_port()}
     ]

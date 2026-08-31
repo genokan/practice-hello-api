@@ -12,11 +12,15 @@ lab:
   enabled: false
   maxDurationSeconds: 300
   maxLatencyMilliseconds: 5000
+  maxCpuWorkers: 8
+  maxMemoryMiB: 512
 
-# Staging-only, manually started k6 Job templates. Argo renders suspended
-# CronJobs; start a one-off run with `kubectl create job --from=cronjob/...`.
+# Staging-only k6 Job templates. When ui.enabled, /lab can start one of these
+# profiles through a namespace-scoped service account; the CronJobs stay suspended.
 load:
   enabled: false
+  ui:
+    enabled: false
   image:
     repository: grafana/k6
     tag: 1.7.1
@@ -35,6 +39,8 @@ load:
       script: smoke.js
     - name: spike
       script: spike.js
+    - name: stress
+      script: stress.js
     - name: sustained
       script: sustained.js
 

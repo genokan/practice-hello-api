@@ -10,13 +10,19 @@
       "properties": {
         "enabled": { "type": "boolean" },
         "maxDurationSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
-        "maxLatencyMilliseconds": { "type": "integer", "minimum": 0, "maximum": 60000 }
+        "maxLatencyMilliseconds": { "type": "integer", "minimum": 0, "maximum": 60000 },
+        "maxCpuWorkers": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "maxMemoryMiB": { "type": "integer", "minimum": 1, "maximum": 4096 }
       }
     },
     "load": {
       "type": "object",
       "properties": {
         "enabled": { "type": "boolean" },
+        "ui": {
+          "type": "object",
+          "properties": { "enabled": { "type": "boolean" } }
+        },
         "namePrefix": { "type": "string", "minLength": 1 },
         "targetUrl": { "type": "string", "minLength": 1 },
         "image": {

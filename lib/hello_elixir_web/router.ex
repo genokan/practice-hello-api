@@ -27,6 +27,7 @@ defmodule HelloElixirWeb.Router do
     get("/health/ready", HelloElixirWeb.HealthController, :ready)
     get("/metrics", HelloElixirWeb.MetricsController, :show)
     get("/lab/status", HelloElixirWeb.LabController, :status)
+    get("/lab/load", HelloElixirWeb.LabController, :load_status)
   end
 
   scope "/lab" do
@@ -35,5 +36,6 @@ defmodule HelloElixirWeb.Router do
     get("/", HelloElixirWeb.LabController, :show)
     post("/fault", HelloElixirWeb.LabController, :activate)
     post("/reset", HelloElixirWeb.LabController, :reset)
+    post("/load", HelloElixirWeb.LabController, :start_load)
   end
 end

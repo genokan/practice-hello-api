@@ -1,6 +1,6 @@
 # hello-api
 
-![Version: 0.1.5](https://img.shields.io/badge/Version-0.1.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
+![Version: 0.1.6](https://img.shields.io/badge/Version-0.1.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
 
 A tiny, intentionally replaceable workload for the practice lab.
 
@@ -18,8 +18,10 @@ A tiny, intentionally replaceable workload for the practice lab.
 | ingress.enabled | bool | `false` |  |
 | ingress.host | string | `""` |  |
 | lab.enabled | bool | `false` |  |
+| lab.maxCpuWorkers | int | `8` |  |
 | lab.maxDurationSeconds | int | `300` |  |
 | lab.maxLatencyMilliseconds | int | `5000` |  |
+| lab.maxMemoryMiB | int | `512` |  |
 | load.enabled | bool | `false` |  |
 | load.image.pullPolicy | string | `"IfNotPresent"` |  |
 | load.image.repository | string | `"grafana/k6"` |  |
@@ -29,13 +31,16 @@ A tiny, intentionally replaceable workload for the practice lab.
 | load.profiles[0].script | string | `"smoke.js"` |  |
 | load.profiles[1].name | string | `"spike"` |  |
 | load.profiles[1].script | string | `"spike.js"` |  |
-| load.profiles[2].name | string | `"sustained"` |  |
-| load.profiles[2].script | string | `"sustained.js"` |  |
+| load.profiles[2].name | string | `"stress"` |  |
+| load.profiles[2].script | string | `"stress.js"` |  |
+| load.profiles[3].name | string | `"sustained"` |  |
+| load.profiles[3].script | string | `"sustained.js"` |  |
 | load.resources.limits.cpu | string | `"500m"` |  |
 | load.resources.limits.memory | string | `"256Mi"` |  |
 | load.resources.requests.cpu | string | `"50m"` |  |
 | load.resources.requests.memory | string | `"64Mi"` |  |
 | load.targetUrl | string | `"http://hello-api-staging-hello-api"` |  |
+| load.ui.enabled | bool | `false` |  |
 | podAnnotations | object | `{}` |  |
 | podDisruptionBudget.enabled | bool | `false` |  |
 | podDisruptionBudget.minAvailable | int | `1` |  |

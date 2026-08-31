@@ -4,7 +4,7 @@ import { check, sleep } from "k6";
 const targetUrl = __ENV.TARGET_URL || "http://hello-api-staging-hello-api";
 
 export const options = {
-  vus: 8,
+  vus: 25,
   duration: "5m",
   thresholds: {
     http_req_failed: ["rate<0.01"],
@@ -19,5 +19,5 @@ export default function () {
     "work returned 200": (result) => result.status === 200,
   });
 
-  sleep(0.5);
+  sleep(0.1);
 }

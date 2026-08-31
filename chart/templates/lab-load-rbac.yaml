@@ -1,0 +1,36 @@
+{{- if and .Values.load.enabled .Values.load.ui.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "hello.fullname" . }}-lab
+  labels:
+    {{- include "hello.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "hello.fullname" . }}-lab
+  labels:
+    {{- include "hello.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    verbs: ["get"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "hello.fullname" . }}-lab
+  labels:
+    {{- include "hello.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "hello.fullname" . }}-lab
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "hello.fullname" . }}-lab
+{{- end }}

@@ -5,10 +5,10 @@ const targetUrl = __ENV.TARGET_URL || "http://hello-api-staging-hello-api";
 
 export const options = {
   stages: [
-    { duration: "15s", target: 2 },
-    { duration: "30s", target: 20 },
-    { duration: "30s", target: 20 },
-    { duration: "15s", target: 0 },
+    { duration: "10s", target: 25 },
+    { duration: "30s", target: 100 },
+    { duration: "30s", target: 200 },
+    { duration: "20s", target: 0 },
   ],
   thresholds: {
     http_req_failed: ["rate<0.05"],
@@ -23,5 +23,5 @@ export default function () {
     "work returned 200": (result) => result.status === 200,
   });
 
-  sleep(0.2);
+  sleep(0.01);
 }

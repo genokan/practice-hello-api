@@ -60,6 +60,8 @@ The page shows the pod that handled the request and exposes these controls:
 | Latency | Adds a bounded delay to `/work` requests handled by that pod | p95 latency and k6 request duration |
 | Errors | Makes a selected percentage of that pod's `/work` requests return `503` | 5xx rate and application logs |
 | Readiness | Makes that pod's readiness probe fail while its process remains live | Service endpoints and available pods |
+| CPU | Starts bounded hash workers in that pod | CPU usage, throttling, p95 latency, and queueing under load |
+| Memory | Retains the selected MiB in that pod | Working set, OOMKilled/restarts when the 256Mi limit is exceeded |
 | Reset | Immediately removes the active scenario from that pod | The active-mode dashboard panel returns to idle |
 
 Every scenario has a 1–300 second expiry. The controls are deliberately
@@ -69,9 +71,10 @@ page and use the displayed pod name to confirm the target.
 
 ### Observe an exercise
 
-1. In Grafana, open the provisioned **Practice Lab** dashboard and choose the
-   `hello-staging` namespace. It contains request rate, p95 latency, 5xx rate,
-   available app pods, active lab modes, pod/restart state, and Loki logs.
+1. In Grafana, open the provisioned **hello-api** dashboard and choose the
+   `hello-staging` namespace. It contains request rate by status, 5xx percentage
+   and status breakdown, latency percentiles, CPU/throttling, memory, lab mode,
+   and Loki logs. **Practice Lab** remains the generic cluster view.
 2. Use [the lab status endpoint](https://hello-staging.opsguy.io/lab/status)
    when you want the exact current pod-local state as JSON.
 3. Use normal Kubernetes inspection commands when practising diagnosis:
@@ -83,32 +86,28 @@ page and use the displayed pod name to confirm the target.
    kubectl -n hello-staging logs deploy/hello-api-staging-hello-api
    ```
 
+### Run load from the UI
+
+The same page starts a k6 Job from one of four chart-declared staging profiles.
+The application has a dedicated namespace-scoped service account that may only
+read those CronJob templates and create/list Jobs; it cannot modify workloads,
+Secrets, or delete anything. The page lists browser-started Jobs and they
+self-clean an hour after completion.
+
+- `smoke`: light deployment verification.
+- `spike`: ramps to 200 virtual users over 90 seconds.
+- `stress`: ramps to 300 virtual users for a deliberately demanding two-minute run.
+- `sustained`: 25 virtual users for five minutes.
+
+The profiles target the in-cluster Service (`/work`), isolating application and
+Service behavior from Caddy, Traefik, TLS, and DNS. They exist only in staging.
+Normal `kubectl` inspection is still useful during an exercise, but it is not
+required to launch one.
+
 ### Current boundaries
 
-Latency, errors, readiness, application metrics, Grafana panels, and the
-staging k6 templates are deployed. CPU-burn and memory-pressure UI controls,
-the UI trigger for k6, Vault/PostgreSQL integration, and container-level
-CPU/memory Grafana panels are **not** built yet. The UI k6 trigger is the next
-change; do not mistake the optional CLI fallback below for the intended primary
-workflow.
-
-## Optional CLI k6 fallback
-
-Staging currently has three **suspended** k6 CronJobs. They never schedule a
-test by themselves. Until the UI trigger lands, start a fresh Job manually:
-
-```sh
-kubectl -n hello-staging create job \
-  --from=cronjob/hello-api-load-smoke \
-  hello-api-load-smoke-01
-kubectl -n hello-staging logs -f job/hello-api-load-smoke-01
-```
-
-- `smoke`: two virtual users for 30 seconds; deployment verification.
-- `spike`: ramps to 20 virtual users for a short failure exercise.
-- `sustained`: eight virtual users for five minutes; latency and memory trends.
-
-Replace `smoke` in both command positions with `spike` or `sustained`. The
-profiles target the in-cluster Service (`/work`), so they measure the application
-and its Kubernetes Service rather than DNS, Caddy, Traefik, or TLS. They are
-staging-only and have no production templates.
+Latency, 503 errors, readiness, CPU burn, memory pressure, application metrics,
+the service-specific Grafana dashboard, and browser-started staging k6 profiles
+are deployed. Fault state remains intentionally pod-local. Vault/PostgreSQL and
+PgBouncer integration are deferred so the first exercises isolate application
+and Kubernetes behavior from dependency failures.
