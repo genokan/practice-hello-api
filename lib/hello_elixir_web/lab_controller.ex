@@ -1,10 +1,10 @@
 defmodule HelloElixirWeb.LabController do
   use Phoenix.Controller, formats: [:html, :json]
 
-  def show(conn, _params) do
+  def show(conn, params) do
     if HelloElixir.Lab.enabled?() do
       status = HelloElixir.Lab.status()
-      send_html(conn, :ok, page(status, load_jobs()))
+      send_html(conn, :ok, page(status, load_jobs(), nil, started_message(params)))
     else
       send_resp(conn, :not_found, "not found")
     end
@@ -46,7 +46,7 @@ defmodule HelloElixirWeb.LabController do
   def start_load(conn, %{"profile" => profile}) do
     case HelloElixir.LoadRunner.start(profile) do
       :ok ->
-        redirect(conn, to: "/lab")
+        redirect(conn, to: "/lab?started=#{URI.encode_www_form(profile)}")
 
       {:error, _reason} ->
         send_html(
@@ -57,8 +57,10 @@ defmodule HelloElixirWeb.LabController do
     end
   end
 
-  defp page(status, load, error \\ nil) do
+  defp page(status, load, error \\ nil, notice \\ nil) do
     error_html = if error, do: "<p class=\"error\">#{error}</p>", else: ""
+    notice_html = if notice, do: "<p class=\"notice\">#{escape(notice)}</p>", else: ""
+    refresh_html = if load_active?(load), do: "<meta http-equiv=\"refresh\" content=\"5\">", else: ""
 
     """
     <!doctype html>
@@ -66,18 +68,20 @@ defmodule HelloElixirWeb.LabController do
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        #{refresh_html}
         <title>hello-api failure lab</title>
         <style>
           body { background: #101418; color: #e5edf4; font: 16px system-ui, sans-serif; margin: 2rem auto; max-width: 54rem; padding: 0 1rem; }
           h1, h2 { color: #91d5ff; } form { background: #19232d; border-radius: .5rem; margin: 1rem 0; padding: 1rem; }
           label { display: block; margin: .6rem 0; } input, select, button { font: inherit; padding: .4rem; } button { cursor: pointer; }
-          code { color: #f9d877; } .error { background: #641f1f; padding: .8rem; } .warning { color: #ffd580; }
+          code { color: #f9d877; } .error { background: #641f1f; padding: .8rem; } .notice { background: #194d32; padding: .8rem; } .warning { color: #ffd580; }
         </style>
       </head>
       <body>
         <h1>hello-api failure lab</h1>
         <p class="warning">Staging-only. Faults are pod-local and automatically reset after the selected duration.</p>
         #{error_html}
+        #{notice_html}
         <p>Pod: <code>#{escape(status.pod)}</code><br>Active mode: <code>#{status.mode}</code><br>Fault workers: <code>#{status.workers}</code><br>Expires: <code>#{status.expires_at || "not active"}</code></p>
         <form method="post" action="/lab/fault">
           <h2>Activate a fault</h2>
@@ -116,16 +120,22 @@ defmodule HelloElixirWeb.LabController do
   defp load_html({:enabled, jobs}) do
     rows =
       Enum.map_join(jobs, "", fn job ->
-        "<tr><td>#{escape(job.profile)}</td><td>#{escape(job.name)}</td><td>#{job.active}/#{job.succeeded}/#{job.failed}</td><td>#{escape(job.started_at || "pending")}</td></tr>"
+        "<tr><td>#{escape(job.profile)}</td><td>#{escape(job.name)}</td><td>#{job_state(job)}</td><td>#{escape(job.started_at || "pending")}</td><td>#{escape(job.completed_at || "—")}</td></tr>"
       end)
+
+    activity =
+      if Enum.any?(jobs, &(&1.active > 0)),
+        do: "<p class=\"notice\">A load run is active. This page refreshes every 5 seconds.</p>",
+        else: ""
 
     """
     <form method="post" action="/lab/load">
       <h2>Run k6 load</h2>
-      <p>Creates one staging Job from the chart-declared profile. It cannot alter workloads or delete resources.</p>
+      <p>Creates one staging Job from the chart-declared profile. Runs are independent, so a standard load can stay active while you start a spike or stress run.</p>
       <label>Profile
         <select name="profile">
           <option value="smoke">Smoke — light verification</option>
+          <option value="standard">Standard — 10 virtual users for 30 minutes</option>
           <option value="spike">Spike — short high concurrency</option>
           <option value="stress">Stress — maximum sustained concurrency</option>
           <option value="sustained">Sustained — steady pressure</option>
@@ -134,7 +144,8 @@ defmodule HelloElixirWeb.LabController do
       <button type="submit">Start k6 run</button>
     </form>
     <h2>Browser-started runs</h2>
-    <table><thead><tr><th>Profile</th><th>Job</th><th>Active / ok / failed</th><th>Started</th></tr></thead><tbody>#{rows}</tbody></table>
+    #{activity}
+    <table><thead><tr><th>Profile</th><th>Job</th><th>Status</th><th>Started</th><th>Completed</th></tr></thead><tbody>#{rows}</tbody></table>
     """
   end
 
@@ -142,6 +153,21 @@ defmodule HelloElixirWeb.LabController do
     do: "<p class=\"warning\">k6 controls are disabled for this environment.</p>"
 
   defp load_html(:unavailable), do: "<p class=\"error\">k6 status is temporarily unavailable.</p>"
+
+  defp load_active?({:enabled, jobs}), do: Enum.any?(jobs, &(&1.active > 0))
+  defp load_active?(_load), do: false
+
+  defp job_state(job) do
+    cond do
+      job.active > 0 -> "Running"
+      job.succeeded > 0 -> "Passed"
+      job.failed > 0 -> "Failed"
+      true -> "Pending"
+    end
+  end
+
+  defp started_message(%{"started" => profile}), do: "Started #{profile}; waiting for the Job to run."
+  defp started_message(_params), do: nil
 
   defp send_html(conn, status, body) do
     conn

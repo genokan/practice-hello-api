@@ -88,19 +88,23 @@ page and use the displayed pod name to confirm the target.
 
 ### Run load from the UI
 
-The same page starts a k6 Job from one of four chart-declared staging profiles.
+The same page starts a k6 Job from one of five chart-declared staging profiles.
 The application has a dedicated namespace-scoped service account that may only
 read those CronJob templates and create/list Jobs; it cannot modify workloads,
 Secrets, or delete anything. The page lists browser-started Jobs and they
-self-clean an hour after completion.
+self-clean an hour after completion. While a Job is active, the page refreshes
+every five seconds and shows its Running, Passed, or Failed state.
 
 - `smoke`: light deployment verification.
+- `standard`: 10 virtual users for 30 minutes; use this as the baseline while
+  layering a spike or stress run over it.
 - `spike`: ramps to 200 virtual users over 90 seconds.
 - `stress`: ramps to 300 virtual users for a deliberately demanding two-minute run.
 - `sustained`: 25 virtual users for five minutes.
 
 The profiles target the in-cluster Service (`/work`), isolating application and
 Service behavior from Caddy, Traefik, TLS, and DNS. They exist only in staging.
+Jobs are independent, so the standard profile can run alongside another profile.
 Normal `kubectl` inspection is still useful during an exercise, but it is not
 required to launch one.
 

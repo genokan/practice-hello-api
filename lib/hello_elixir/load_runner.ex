@@ -46,7 +46,7 @@ defmodule HelloElixir.LoadRunner do
     end
   end
 
-  defp profiles, do: ["smoke", "spike", "stress", "sustained"]
+  defp profiles, do: ["smoke", "standard", "spike", "stress", "sustained"]
 
   defp new_job(profile, job_spec) do
     %{
