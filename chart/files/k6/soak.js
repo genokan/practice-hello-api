@@ -4,20 +4,20 @@ import { check, sleep } from "k6";
 const targetUrl = __ENV.TARGET_URL || "http://hello-api-staging-hello-api";
 
 export const options = {
-  vus: 25,
-  duration: "30m",
+  vus: 10,
+  duration: "2h",
   thresholds: {
-    http_req_failed: ["rate<0.01"],
-    http_req_duration: ["p(95)<750"],
+    http_req_failed: ["rate<0.02"],
+    http_req_duration: ["p(95)<1000"],
   },
 };
 
 export default function () {
-  const response = http.get(`${targetUrl}/work`, { tags: { profile: "sustained" } });
+  const response = http.get(`${targetUrl}/work`, { tags: { profile: "soak" } });
 
   check(response, {
     "work returned 200": (result) => result.status === 200,
   });
 
-  sleep(0.1);
+  sleep(0.25);
 }

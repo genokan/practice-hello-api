@@ -22,7 +22,7 @@ Implemented and deployed:
 - `/metrics` exposes request counters, duration histograms, availability, and
   active-lab-mode metrics; Prometheus and the existing `Practice Lab` Grafana
   dashboard collect and display them;
-- staging renders suspended `hello-api-load-{smoke,standard,spike,stress,sustained}`
+- staging renders suspended `hello-api-load-{smoke,standard,spike,stress,sustained,soak}`
   CronJobs; the UI starts a Job from one selected template through a narrowly
   scoped namespace Role;
 - the chart supports a 200m CPU limit, a soft hostname spread preference, and
@@ -74,8 +74,11 @@ practice-hello-api/
   lib/hello_elixir_web/          # /lab HTML and JSON control endpoints
   chart/files/k6/
     smoke.js
+    standard.js
     spike.js
+    stress.js
     sustained.js
+    soak.js
   chart/templates/
     lab-load-configmap.yaml
     lab-load-cronjobs.yaml
@@ -206,9 +209,12 @@ Profiles:
 - `smoke`: low, short traffic to verify a deployment;
 - `standard`: a 30-minute moderate baseline that can run with an additional
   spike or stress Job;
-- `spike`: a quick rise in virtual users for CPU/throttling and error testing;
-- `stress`: deliberately high concurrency for saturation and throttling;
-- `sustained`: several minutes of steady traffic for latency and memory trends.
+- `spike`: a five-minute climb, peak hold, and recovery at 200 virtual users
+  for CPU/throttling and error testing;
+- `stress`: a 22-minute ramp and 15-minute hold at 300 virtual users for
+  saturation and throttling;
+- `sustained`: 25 virtual users for 30 minutes for latency and memory trends;
+- `soak`: 10 virtual users for two hours to surface gradual degradation.
 
 Run a profile from the staging `/lab` UI. The app ServiceAccount can read only
 the chart-declared CronJob templates and create/list Jobs in its own namespace;

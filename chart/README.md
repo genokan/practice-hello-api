@@ -1,6 +1,6 @@
 # hello-api
 
-![Version: 0.1.7](https://img.shields.io/badge/Version-0.1.7-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
+![Version: 0.1.8](https://img.shields.io/badge/Version-0.1.8-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
 
 A tiny, intentionally replaceable workload for the practice lab.
 
@@ -37,6 +37,8 @@ A tiny, intentionally replaceable workload for the practice lab.
 | load.profiles[3].script | string | `"stress.js"` |  |
 | load.profiles[4].name | string | `"sustained"` |  |
 | load.profiles[4].script | string | `"sustained.js"` |  |
+| load.profiles[5].name | string | `"soak"` |  |
+| load.profiles[5].script | string | `"soak.js"` |  |
 | load.resources.limits.cpu | string | `"500m"` |  |
 | load.resources.limits.memory | string | `"256Mi"` |  |
 | load.resources.requests.cpu | string | `"50m"` |  |
