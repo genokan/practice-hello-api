@@ -74,9 +74,21 @@ defmodule HelloElixirWeb.LabController do
         <title>hello-api failure lab</title>
         <style>
           body { background: #101418; color: #e5edf4; font: 16px system-ui, sans-serif; margin: 2rem auto; max-width: 54rem; padding: 0 1rem; }
-          h1, h2 { color: #91d5ff; } form { background: #19232d; border-radius: .5rem; margin: 1rem 0; padding: 1rem; }
+          h1, h2, h3 { color: #91d5ff; } form { background: #19232d; border-radius: .5rem; margin: 1rem 0; padding: 1rem; }
           label { display: block; margin: .6rem 0; } input, select, button { font: inherit; padding: .4rem; } button { cursor: pointer; }
           code { color: #f9d877; } .error { background: #641f1f; padding: .8rem; } .notice { background: #194d32; padding: .8rem; } .warning { color: #ffd580; }
+          .load-section { margin: 1.5rem 0; } .load-section > p { color: #b8c7d4; }
+          .run-grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); }
+          .run-card { background: #19232d; border: 1px solid #385064; border-radius: .6rem; padding: 1rem; }
+          .run-card__head { align-items: center; display: flex; gap: .75rem; justify-content: space-between; }
+          .run-card__head strong { font-size: 1.1rem; } .badge { border-radius: 999px; font-size: .8rem; font-weight: 700; padding: .25rem .55rem; }
+          .badge-running { background: #1c6b45; color: #d6ffe6; } .badge-pending { background: #76591b; color: #fff2bd; }
+          .badge-passed { background: #315c78; color: #d6efff; } .badge-failed { background: #7d2929; color: #ffe0e0; }
+          .run-card dl { display: grid; gap: .4rem .75rem; grid-template-columns: max-content 1fr; margin: .9rem 0 0; }
+          .run-card dt { color: #9fb4c6; } .run-card dd { margin: 0; overflow-wrap: anywhere; }
+          .run-history { overflow-x: auto; } table { border-collapse: collapse; min-width: 40rem; width: 100%; }
+          th, td { border-bottom: 1px solid #385064; padding: .7rem; text-align: left; vertical-align: top; } th { color: #9fb4c6; font-size: .8rem; letter-spacing: .03em; text-transform: uppercase; }
+          @media (max-width: 38rem) { body { margin: 1rem auto; } .run-card dl { grid-template-columns: 1fr; gap: .1rem; } .run-card dd { margin-bottom: .5rem; } }
         </style>
       </head>
       <body>
@@ -120,15 +132,16 @@ defmodule HelloElixirWeb.LabController do
   end
 
   defp load_html({:enabled, jobs}) do
-    rows =
-      Enum.map_join(jobs, "", fn job ->
-        "<tr><td>#{escape(job.profile)}</td><td>#{escape(job.name)}</td><td>#{job_state(job)}</td><td>#{escape(job.started_at || "pending")}</td><td>#{escape(job.completed_at || "—")}</td></tr>"
-      end)
+    active_jobs = Enum.filter(jobs, &(&1.active > 0))
+    completed_jobs = Enum.reject(jobs, &(&1.active > 0))
 
-    activity =
-      if Enum.any?(jobs, &(&1.active > 0)),
-        do: "<p class=\"notice\">A load run is active. This page refreshes every 5 seconds.</p>",
-        else: ""
+    activity = active_load_html(active_jobs)
+
+    history =
+      case completed_jobs do
+        [] -> "<p>No completed runs yet.</p>"
+        _ -> "<div class=\"run-history\"><table><thead><tr><th>Profile</th><th>Job</th><th>Status</th><th>Started</th><th>Completed</th></tr></thead><tbody>#{load_history_rows(completed_jobs)}</tbody></table></div>"
+      end
 
     """
     <form method="post" action="/lab/load">
@@ -145,9 +158,12 @@ defmodule HelloElixirWeb.LabController do
       </label>
       <button type="submit">Start k6 run</button>
     </form>
-    <h2>Browser-started runs</h2>
+    <h2>Load runs</h2>
     #{activity}
-    <table><thead><tr><th>Profile</th><th>Job</th><th>Status</th><th>Started</th><th>Completed</th></tr></thead><tbody>#{rows}</tbody></table>
+    <section class="load-section">
+      <h3>Recent completed runs</h3>
+      #{history}
+    </section>
     """
   end
 
@@ -159,12 +175,49 @@ defmodule HelloElixirWeb.LabController do
   defp load_active?({:enabled, jobs}), do: Enum.any?(jobs, &(&1.active > 0))
   defp load_active?(_load), do: false
 
+  defp active_load_html([]), do: ""
+
+  defp active_load_html(jobs) do
+    cards = Enum.map_join(jobs, "", &load_job_card/1)
+    count_label = if length(jobs) == 1, do: "1 run", else: "#{length(jobs)} runs"
+
+    """
+    <section class="load-section">
+      <h3>Active load runs</h3>
+      <p class="notice">#{count_label} active. This page refreshes every 5 seconds.</p>
+      <div class="run-grid">#{cards}</div>
+    </section>
+    """
+  end
+
+  defp load_job_card(job) do
+    {label, class} = job_state(job)
+
+    """
+    <article class="run-card">
+      <div class="run-card__head"><strong>#{escape(job.profile)}</strong><span class="badge badge-#{class}">#{label}</span></div>
+      <dl>
+        <dt>Job</dt><dd><code>#{escape(job.name)}</code></dd>
+        <dt>Started</dt><dd>#{escape(job.started_at || "pending")}</dd>
+      </dl>
+    </article>
+    """
+  end
+
+  defp load_history_rows(jobs) do
+    Enum.map_join(jobs, "", fn job ->
+      {label, class} = job_state(job)
+
+      "<tr><td>#{escape(job.profile)}</td><td><code>#{escape(job.name)}</code></td><td><span class=\"badge badge-#{class}\">#{label}</span></td><td>#{escape(job.started_at || "pending")}</td><td>#{escape(job.completed_at || "—")}</td></tr>"
+    end)
+  end
+
   defp job_state(job) do
     cond do
-      job.active > 0 -> "Running"
-      job.succeeded > 0 -> "Passed"
-      job.failed > 0 -> "Failed"
-      true -> "Pending"
+      job.active > 0 -> {"Running", "running"}
+      job.succeeded > 0 -> {"Passed", "passed"}
+      job.failed > 0 -> {"Failed", "failed"}
+      true -> {"Pending", "pending"}
     end
   end
 
