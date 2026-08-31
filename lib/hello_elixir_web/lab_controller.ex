@@ -4,7 +4,7 @@ defmodule HelloElixirWeb.LabController do
   def show(conn, _params) do
     if HelloElixir.Lab.enabled?() do
       status = HelloElixir.Lab.status()
-      send_html(conn, :ok, page(status))
+      send_html(conn, :ok, page(status, load_jobs()))
     else
       send_resp(conn, :not_found, "not found")
     end
@@ -16,6 +16,14 @@ defmodule HelloElixirWeb.LabController do
       else: send_resp(conn, :not_found, "not found")
   end
 
+  def load_status(conn, _params) do
+    case HelloElixir.LoadRunner.list() do
+      {:ok, jobs} -> json(conn, %{jobs: jobs})
+      {:error, :disabled} -> send_resp(conn, :not_found, "not found")
+      {:error, reason} -> json(conn |> put_status(:bad_gateway), %{error: reason})
+    end
+  end
+
   def activate(conn, params) do
     case HelloElixir.Lab.activate(params) do
       {:ok, _status} ->
@@ -25,7 +33,7 @@ defmodule HelloElixirWeb.LabController do
         send_html(
           conn,
           :unprocessable_entity,
-          page(HelloElixir.Lab.status(), "Invalid or out-of-range lab settings.")
+          page(HelloElixir.Lab.status(), load_jobs(), "Invalid or out-of-range lab settings.")
         )
     end
   end
@@ -35,7 +43,21 @@ defmodule HelloElixirWeb.LabController do
     redirect(conn, to: "/lab")
   end
 
-  defp page(status, error \\ nil) do
+  def start_load(conn, %{"profile" => profile}) do
+    case HelloElixir.LoadRunner.start(profile) do
+      :ok ->
+        redirect(conn, to: "/lab")
+
+      {:error, _reason} ->
+        send_html(
+          conn,
+          :unprocessable_entity,
+          page(HelloElixir.Lab.status(), load_jobs(), "Could not start that load profile.")
+        )
+    end
+  end
+
+  defp page(status, load, error \\ nil) do
     error_html = if error, do: "<p class=\"error\">#{error}</p>", else: ""
 
     """
@@ -54,9 +76,9 @@ defmodule HelloElixirWeb.LabController do
       </head>
       <body>
         <h1>hello-api failure lab</h1>
-        <p class="warning">Staging-only, pod-local, and automatically reset after the selected duration.</p>
+        <p class="warning">Staging-only. Faults are pod-local and automatically reset after the selected duration.</p>
         #{error_html}
-        <p>Pod: <code>#{escape(status.pod)}</code><br>Active mode: <code>#{status.mode}</code><br>Expires: <code>#{status.expires_at || "not active"}</code></p>
+        <p>Pod: <code>#{escape(status.pod)}</code><br>Active mode: <code>#{status.mode}</code><br>Fault workers: <code>#{status.workers}</code><br>Expires: <code>#{status.expires_at || "not active"}</code></p>
         <form method="post" action="/lab/fault">
           <h2>Activate a fault</h2>
           <label>Mode
@@ -64,19 +86,62 @@ defmodule HelloElixirWeb.LabController do
               <option value="latency">Inject latency into /work</option>
               <option value="errors">Inject 503 responses from /work</option>
               <option value="readiness">Fail readiness</option>
+              <option value="cpu">Burn CPU in this pod</option>
+              <option value="memory">Allocate memory in this pod</option>
             </select>
           </label>
           <label>Duration in seconds <input type="number" name="duration" min="1" max="300" value="60" required></label>
           <label>Latency in milliseconds (latency mode) <input type="number" name="delay_ms" min="0" max="5000" value="500"></label>
           <label>Error percentage (error mode) <input type="number" name="error_percent" min="0" max="100" value="25"></label>
+          <label>CPU workers (CPU mode) <input type="number" name="cpu_workers" min="1" max="8" value="2"></label>
+          <label>Memory MiB (memory mode) <input type="number" name="memory_mib" min="1" max="512" value="128"></label>
           <button type="submit">Activate</button>
         </form>
         <form method="post" action="/lab/reset"><button type="submit">Reset this pod</button></form>
-        <p>Generate load against <code>/work</code>; <a href="/lab/status">JSON status</a>.</p>
+        #{load_html(load)}
+        <p><a href="/lab/status">Fault JSON</a> · <a href="/lab/load">Load JSON</a></p>
       </body>
     </html>
     """
   end
+
+  defp load_jobs do
+    case HelloElixir.LoadRunner.list() do
+      {:ok, jobs} -> {:enabled, jobs}
+      {:error, :disabled} -> :disabled
+      {:error, _reason} -> :unavailable
+    end
+  end
+
+  defp load_html({:enabled, jobs}) do
+    rows =
+      Enum.map_join(jobs, "", fn job ->
+        "<tr><td>#{escape(job.profile)}</td><td>#{escape(job.name)}</td><td>#{job.active}/#{job.succeeded}/#{job.failed}</td><td>#{escape(job.started_at || "pending")}</td></tr>"
+      end)
+
+    """
+    <form method="post" action="/lab/load">
+      <h2>Run k6 load</h2>
+      <p>Creates one staging Job from the chart-declared profile. It cannot alter workloads or delete resources.</p>
+      <label>Profile
+        <select name="profile">
+          <option value="smoke">Smoke — light verification</option>
+          <option value="spike">Spike — short high concurrency</option>
+          <option value="stress">Stress — maximum sustained concurrency</option>
+          <option value="sustained">Sustained — steady pressure</option>
+        </select>
+      </label>
+      <button type="submit">Start k6 run</button>
+    </form>
+    <h2>Browser-started runs</h2>
+    <table><thead><tr><th>Profile</th><th>Job</th><th>Active / ok / failed</th><th>Started</th></tr></thead><tbody>#{rows}</tbody></table>
+    """
+  end
+
+  defp load_html(:disabled),
+    do: "<p class=\"warning\">k6 controls are disabled for this environment.</p>"
+
+  defp load_html(:unavailable), do: "<p class=\"error\">k6 status is temporarily unavailable.</p>"
 
   defp send_html(conn, status, body) do
     conn

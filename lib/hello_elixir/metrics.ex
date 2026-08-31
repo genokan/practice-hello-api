@@ -57,6 +57,7 @@ defmodule HelloElixir.Metrics do
     lab = HelloElixir.Lab.status()
     active = if lab.mode == "idle" or lab.mode == "disabled", do: 0, else: 1
     readiness = if lab.mode == "readiness", do: 1, else: 0
+    workers = Map.get(lab, :workers, 0)
 
     """
     # HELP hello_elixir_up Whether the application is available.
@@ -75,6 +76,9 @@ defmodule HelloElixir.Metrics do
     # HELP hello_api_lab_readiness_forced Whether readiness is deliberately failing.
     # TYPE hello_api_lab_readiness_forced gauge
     hello_api_lab_readiness_forced #{readiness}
+    # HELP hello_api_lab_workers Number of deliberate CPU or memory fault workers in this pod.
+    # TYPE hello_api_lab_workers gauge
+    hello_api_lab_workers{mode="#{lab.mode}"} #{workers}
     """
   end
 

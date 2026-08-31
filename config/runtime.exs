@@ -26,6 +26,10 @@ config :hello_elixir,
   database_url: System.get_env("DATABASE_URL"),
   lab_enabled: System.get_env("LAB_ENABLED") == "true",
   lab_max_duration_seconds: parse_integer.("LAB_MAX_DURATION_SECONDS", 300),
-  lab_max_latency_milliseconds: parse_integer.("LAB_MAX_LATENCY_MILLISECONDS", 5_000)
+  lab_max_latency_milliseconds: parse_integer.("LAB_MAX_LATENCY_MILLISECONDS", 5_000),
+  lab_max_cpu_workers: parse_integer.("LAB_MAX_CPU_WORKERS", 8),
+  lab_max_memory_mib: parse_integer.("LAB_MAX_MEMORY_MIB", 512),
+  lab_load_ui_enabled: System.get_env("LAB_LOAD_UI_ENABLED") == "true",
+  lab_load_name_prefix: System.get_env("LAB_LOAD_NAME_PREFIX", "hello-api-load")
 
 config :logger, level: log_level

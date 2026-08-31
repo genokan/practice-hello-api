@@ -70,6 +70,7 @@ defmodule HelloElixir.Lab do
           expires_at: System.system_time(:second) + duration_seconds,
           token: make_ref()
         })
+        |> start_fault_workers()
 
       Process.send_after(self(), {:expire, state.token}, duration_seconds * 1_000)
 
@@ -95,10 +96,16 @@ defmodule HelloElixir.Lab do
   def handle_info({:expire, _token}, state), do: {:noreply, state}
 
   defp idle_state do
-    %{mode: :idle, value: 0, expires_at: nil, token: nil}
+    %{mode: :idle, value: 0, expires_at: nil, token: nil, workers: []}
   end
 
-  defp reset_state(_state), do: idle_state()
+  defp reset_state(state) do
+    Enum.each(Map.get(state, :workers, []), fn pid ->
+      if Process.alive?(pid), do: Process.exit(pid, :kill)
+    end)
+
+    idle_state()
+  end
 
   defp disabled_status do
     %{enabled: false, mode: "disabled", expires_at: nil, value: 0, pod: pod_name()}
@@ -110,6 +117,7 @@ defmodule HelloElixir.Lab do
       mode: Atom.to_string(state.mode),
       expires_at: state.expires_at,
       value: state.value,
+      workers: length(state.workers),
       pod: pod_name()
     }
   end
@@ -117,6 +125,8 @@ defmodule HelloElixir.Lab do
   defp parse_mode("latency"), do: {:ok, :latency}
   defp parse_mode("errors"), do: {:ok, :errors}
   defp parse_mode("readiness"), do: {:ok, :readiness}
+  defp parse_mode("cpu"), do: {:ok, :cpu}
+  defp parse_mode("memory"), do: {:ok, :memory}
   defp parse_mode(_mode), do: {:error, :invalid_mode}
 
   defp parse_duration(value) do
@@ -141,6 +151,12 @@ defmodule HelloElixir.Lab do
 
   defp parse_value(:readiness, _params), do: {:ok, 1}
 
+  defp parse_value(:cpu, params),
+    do: parse_bounded_integer(params["cpu_workers"], max_cpu_workers())
+
+  defp parse_value(:memory, params),
+    do: parse_bounded_integer(params["memory_mib"], max_memory_mib())
+
   defp parse_bounded_integer(value, maximum) do
     case Integer.parse(value || "") do
       {integer, ""} when integer >= 0 and integer <= maximum -> {:ok, integer}
@@ -153,6 +169,46 @@ defmodule HelloElixir.Lab do
 
   defp max_latency_milliseconds,
     do: Application.get_env(:hello_elixir, :lab_max_latency_milliseconds, 5_000)
+
+  defp max_cpu_workers,
+    do: Application.get_env(:hello_elixir, :lab_max_cpu_workers, 8)
+
+  defp max_memory_mib,
+    do: Application.get_env(:hello_elixir, :lab_max_memory_mib, 512)
+
+  defp start_fault_workers(%{mode: :cpu, value: count} = state) do
+    workers =
+      for _ <- 1..count do
+        Task.Supervisor.async_nolink(HelloElixir.Lab.TaskSupervisor, fn ->
+          burn_cpu(<<0::8192>>)
+        end).pid
+      end
+
+    %{state | workers: workers}
+  end
+
+  defp start_fault_workers(%{mode: :memory, value: mib} = state) do
+    worker =
+      Task.Supervisor.async_nolink(HelloElixir.Lab.TaskSupervisor, fn ->
+        hold_memory(:binary.copy(<<0>>, mib * 1_048_576))
+      end).pid
+
+    %{state | workers: [worker]}
+  end
+
+  defp start_fault_workers(state), do: state
+
+  defp burn_cpu(data) do
+    burn_cpu(:crypto.hash(:sha256, data))
+  end
+
+  defp hold_memory(data) do
+    receive do
+      :stop -> :ok
+    after
+      :infinity -> byte_size(data)
+    end
+  end
 
   defp pod_name, do: System.get_env("HOSTNAME", "local")
 end

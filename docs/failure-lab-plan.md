@@ -17,23 +17,21 @@ that Argo CD deploys; `home-docker` continues to provision Grafana.
 Implemented and deployed:
 
 - staging runs two pods and production runs three;
-- staging has the `/lab` console with bounded latency, error, and readiness
-  modes, reset, expiry, and pod-local state; production disables the console;
+- staging has the `/lab` console with bounded latency, error, readiness, CPU,
+  and memory modes, reset, expiry, and pod-local state; production disables it;
 - `/metrics` exposes request counters, duration histograms, availability, and
   active-lab-mode metrics; Prometheus and the existing `Practice Lab` Grafana
   dashboard collect and display them;
-- staging renders suspended `hello-api-load-{smoke,spike,sustained}` CronJobs;
-  their scripts target the in-cluster Service and are started with
-  `kubectl create job`;
+- staging renders suspended `hello-api-load-{smoke,spike,stress,sustained}`
+  CronJobs; the UI starts a Job from one selected template through a narrowly
+  scoped namespace Role;
 - the chart supports a 200m CPU limit, a soft hostname spread preference, and
   an optional PDB. Staging currently uses `minAvailable: 1`. Production has
   its CPU limit but needs its normal release-driven chart promotion before the
   new PDB template is available there.
 
-Still planned, not represented as complete below: the CPU-burn and
-memory-pressure UI modes, deliberate process exit, app resource panels sourced
-from container metrics, a Vault-delivered PostgreSQL credential and real query,
-and the follow-on HPA/dependency/network exercises.
+Still planned: deliberate process exit, a Vault-delivered PostgreSQL credential
+and real query, and the follow-on HPA/dependency/network exercises.
 
 ## Desired end state
 
@@ -203,20 +201,17 @@ assertions are app-specific. The chart renders their scripts into a ConfigMap
 and creates suspended staging-only CronJobs. Argo deploys these templates but
 never starts a load run.
 
-Initial profiles:
+Profiles:
 
 - `smoke`: low, short traffic to verify a deployment;
 - `spike`: a quick rise in virtual users for CPU/throttling and error testing;
+- `stress`: deliberately high concurrency for saturation and throttling;
 - `sustained`: several minutes of steady traffic for latency and memory trends.
 
-Run a profile using standard Kubernetes commands, choosing a fresh Job name:
-
-```sh
-kubectl -n hello-api-staging create job \
-  --from=cronjob/hello-api-load-spike \
-  hello-api-load-spike-01
-kubectl -n hello-api-staging logs -f job/hello-api-load-spike-01
-```
+Run a profile from the staging `/lab` UI. The app ServiceAccount can read only
+the chart-declared CronJob templates and create/list Jobs in its own namespace;
+it cannot modify workloads, secrets, or delete resources. Jobs self-clean by
+TTL. `kubectl` remains useful for inspecting outcomes, not as the start path.
 
 The first profiles target the in-cluster service DNS so they isolate application
 behaviour. A later ingress profile can target `https://hello-staging.opsguy.io`
@@ -285,7 +280,8 @@ kubectl -n hello-api-staging logs <pod-name> --previous
 
 ## Deliberate exclusions
 
-- No k6 operator or Kubernetes API access from the app in the initial lab.
+- No k6 operator, cluster-scoped role, workload mutation, secret access, or
+  job-deletion access from the app.
 - No production failure controls or load CronJobs.
 - No hard pod anti-affinity or required topology spread on the one-node VM.
 - No automatic chaos schedule; every fault and load run is manually initiated

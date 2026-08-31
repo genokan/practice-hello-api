@@ -20,6 +20,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
+      {{- if and .Values.load.enabled .Values.load.ui.enabled }}
+      serviceAccountName: {{ include "hello.fullname" . }}-lab
+      {{- end }}
       {{- if .Values.topologySpread.enabled }}
       topologySpreadConstraints:
         - maxSkew: {{ .Values.topologySpread.maxSkew }}
@@ -47,6 +50,18 @@ spec:
               value: {{ .Values.lab.maxDurationSeconds | quote }}
             - name: LAB_MAX_LATENCY_MILLISECONDS
               value: {{ .Values.lab.maxLatencyMilliseconds | quote }}
+            - name: LAB_MAX_CPU_WORKERS
+              value: {{ .Values.lab.maxCpuWorkers | quote }}
+            - name: LAB_MAX_MEMORY_MIB
+              value: {{ .Values.lab.maxMemoryMiB | quote }}
+            - name: LAB_LOAD_UI_ENABLED
+              value: {{ and .Values.load.enabled .Values.load.ui.enabled | quote }}
+            - name: LAB_LOAD_NAME_PREFIX
+              value: {{ .Values.load.namePrefix | quote }}
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             {{- range .Values.secretEnv }}
             - name: {{ .name }}
               valueFrom:
