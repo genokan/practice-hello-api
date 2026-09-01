@@ -1,0 +1,66 @@
+{{- if .Values.failureExercises.enabled }}
+{{- $name := include "hello.fullname" . }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ printf "%s-exercise-image-pull" $name | trunc 63 | trimSuffix "-" }}
+  labels:
+    {{- include "hello.labels" . | nindent 4 }}
+    app.kubernetes.io/component: failure-exercise
+    practice-lab.opsguy.io/exercise: image-pull
+spec:
+  schedule: "0 0 1 1 *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: {{ .Values.failureExercises.imagePull.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            {{- include "hello.labels" . | nindent 12 }}
+            app.kubernetes.io/component: failure-exercise
+            practice-lab.opsguy.io/exercise: image-pull
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: image-pull-drill
+              image: {{ .Values.failureExercises.imagePull.image | quote }}
+              imagePullPolicy: Always
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ printf "%s-exercise-crashloop" $name | trunc 63 | trimSuffix "-" }}
+  labels:
+    {{- include "hello.labels" . | nindent 4 }}
+    app.kubernetes.io/component: failure-exercise
+    practice-lab.opsguy.io/exercise: crashloop
+spec:
+  schedule: "0 0 1 1 *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.failureExercises.crashLoop.backoffLimit }}
+      activeDeadlineSeconds: {{ .Values.failureExercises.crashLoop.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            {{- include "hello.labels" . | nindent 12 }}
+            app.kubernetes.io/component: failure-exercise
+            practice-lab.opsguy.io/exercise: crashloop
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: crashloop-drill
+              image: {{ .Values.failureExercises.crashLoop.image | quote }}
+              command: ["/bin/sh", "-c"]
+              args: ["echo intentional crash-loop exercise >&2; exit 1"]
+{{- end }}

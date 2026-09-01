@@ -1,6 +1,6 @@
 # hello-api
 
-![Version: 0.1.8](https://img.shields.io/badge/Version-0.1.8-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
+![Version: 0.1.9](https://img.shields.io/badge/Version-0.1.9-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.27.6](https://img.shields.io/badge/AppVersion-1.27.6-informational?style=flat-square)
 
 A tiny, intentionally replaceable workload for the practice lab.
 
@@ -9,6 +9,12 @@ A tiny, intentionally replaceable workload for the practice lab.
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | environment | string | `"development"` |  |
+| failureExercises.crashLoop.activeDeadlineSeconds | int | `600` |  |
+| failureExercises.crashLoop.backoffLimit | int | `100` |  |
+| failureExercises.crashLoop.image | string | `"busybox:1.36"` |  |
+| failureExercises.enabled | bool | `false` |  |
+| failureExercises.imagePull.activeDeadlineSeconds | int | `600` |  |
+| failureExercises.imagePull.image | string | `"registry.invalid/practice-lab/image-pull-drill:never"` |  |
 | image.digest | string | `""` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"nginxinc/nginx-unprivileged"` |  |

@@ -48,6 +48,19 @@ load:
     - name: soak
       script: soak.js
 
+# Suspended, staging-only Kubernetes failure templates. These are deliberately
+# not started by the application: use kubectl create job --from=cronjob/... to
+# practise the same commands used during incident response.
+failureExercises:
+  enabled: false
+  imagePull:
+    image: "registry.invalid/practice-lab/image-pull-drill:never"
+    activeDeadlineSeconds: 600
+  crashLoop:
+    image: "busybox:1.36"
+    activeDeadlineSeconds: 600
+    backoffLimit: 100
+
 service:
   type: ClusterIP
   port: 80
