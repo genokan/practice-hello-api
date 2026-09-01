@@ -86,6 +86,10 @@ page and use the displayed pod name to confirm the target.
    kubectl -n hello-staging logs deploy/hello-api-staging-hello-api
    ```
 
+   See [Kubernetes troubleshooting guide](docs/kubernetes-troubleshooting.md)
+   for the common Pod states, the evidence to collect, and the first commands
+   to run.
+
 ### Run load from the UI
 
 The same page starts a k6 Job from one of six chart-declared staging profiles.

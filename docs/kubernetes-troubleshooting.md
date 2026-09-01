@@ -1,8 +1,7 @@
-# Kubernetes Interview Triage
+# Kubernetes Troubleshooting Guide
 
-Do not try to memorize every Kubernetes object. Start with the same progression
-for every deployment incident: desired state, Pod state, Events, logs, then
-resource and traffic evidence.
+Start with the same progression for every deployment incident: desired state,
+Pod state, Events, logs, then resource and traffic evidence.
 
 ```sh
 kubectl get deployment,replicaset,pods -n hello-staging
