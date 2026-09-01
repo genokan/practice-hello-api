@@ -112,10 +112,33 @@ Jobs are independent, so the standard profile can run alongside another profile.
 Normal `kubectl` inspection is still useful during an exercise, but it is not
 required to launch one.
 
+### Practise Kubernetes startup failures
+
+Two suspended staging-only CronJobs are intentionally **not** controlled by the
+browser. Starting them with `kubectl` is part of the exercise: it keeps the
+application's ServiceAccount narrow while giving you repeatable, real Pod
+failure states.
+
+```sh
+# ImagePullBackOff: there are no container logs; read the Pod Events.
+kubectl create job image-pull-drill --from=cronjob/hello-api-staging-hello-api-exercise-image-pull -n hello-staging
+kubectl get pods -n hello-staging -l practice-lab.opsguy.io/exercise=image-pull -w
+kubectl describe pod <pod-name> -n hello-staging
+
+# CrashLoopBackOff: inspect both current and previous container output.
+kubectl create job crashloop-drill --from=cronjob/hello-api-staging-hello-api-exercise-crashloop -n hello-staging
+kubectl get pods -n hello-staging -l practice-lab.opsguy.io/exercise=crashloop -w
+kubectl logs <pod-name> -n hello-staging --previous
+```
+
+Both exercises have a ten-minute active deadline. To stop one early, delete the
+Job you created with `kubectl delete job <job-name> -n hello-staging`.
+
 ### Current boundaries
 
 Latency, 503 errors, readiness, CPU burn, memory pressure, application metrics,
-the service-specific Grafana dashboard, and browser-started staging k6 profiles
-are deployed. Fault state remains intentionally pod-local. Vault/PostgreSQL and
-PgBouncer integration are deferred so the first exercises isolate application
+the service-specific Grafana dashboard, browser-started staging k6 profiles,
+and repeatable ImagePullBackOff/CrashLoopBackOff drills are deployed. Fault
+state remains intentionally pod-local. Vault/PostgreSQL and PgBouncer
+integration are deferred so the first exercises isolate application
 and Kubernetes behavior from dependency failures.

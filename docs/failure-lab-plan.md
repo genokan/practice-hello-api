@@ -25,6 +25,9 @@ Implemented and deployed:
 - staging renders suspended `hello-api-load-{smoke,standard,spike,stress,sustained,soak}`
   CronJobs; the UI starts a Job from one selected template through a narrowly
   scoped namespace Role;
+- staging also renders suspended ImagePullBackOff and CrashLoopBackOff
+  templates. They are started with `kubectl create job --from=cronjob/...` so
+  the application keeps its existing narrow Job-only permission boundary;
 - the chart supports a 200m CPU limit, a soft hostname spread preference, and
   an optional PDB. Staging currently uses `minAvailable: 1`. Production has
   its CPU limit but needs its normal release-driven chart promotion before the
@@ -215,6 +218,23 @@ Profiles:
   saturation and throttling;
 - `sustained`: 25 virtual users for 30 minutes for latency and memory trends;
 - `soak`: 10 virtual users for two hours to surface gradual degradation.
+
+### Kubernetes startup-failure drills
+
+Two additional suspended CronJob templates provide repeatable Pod-state
+exercises without a permanently broken Deployment or app permission to mutate
+workloads:
+
+- `image-pull`: uses a deliberately nonexistent registry image. The resulting
+  Pod transitions through `ErrImagePull` to `ImagePullBackOff`; no application
+  log exists, so the diagnostic evidence is in `kubectl describe pod` Events.
+- `crashloop`: runs a container that exits with status 1 under `OnFailure`.
+  The kubelet restarts the same Pod until its 10-minute active deadline, giving
+  a genuine `CrashLoopBackOff`, restart count, current logs, and previous logs.
+
+Start each with normal `kubectl create job --from=cronjob/...`, observe it, and
+delete the Job when finished. This mirrors incident triage more closely than a
+browser button while leaving the main application's Role unchanged.
 
 Run a profile from the staging `/lab` UI. The app ServiceAccount can read only
 the chart-declared CronJob templates and create/list Jobs in its own namespace;
